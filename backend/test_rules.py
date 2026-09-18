@@ -105,8 +105,26 @@ def test_nearest_in_range():
     assert 110_000 < d < 112_000, d
 
 
+def test_density_50m_and_unique_reporters():
+    from app.services.reports import cluster_density_rows
+
+    # 40 m masih satu kelompok; 60 m dari pusat membuat kelompok baru.
+    base = {"lat": -6.9, "lng": 107.6, "published_at": "2026-09-18T00:00:00Z"}
+    rows = [
+        {**base, "id": "a", "author_id": "warga-a"},
+        {**base, "id": "b", "author_id": "warga-a", "lat": -6.9 + 40 / 111_195},
+        {**base, "id": "c", "author_id": "warga-b", "lat": -6.9 + 45 / 111_195},
+        {**base, "id": "d", "author_id": "warga-c", "lat": -6.9 + 105 / 111_195},
+    ]
+    points = cluster_density_rows(rows)
+    assert [point["count"] for point in points] == [2, 1], points
+    assert set(points[0]) == {"lat", "lng", "count"}
+    assert points[0]["lat"] == round(base["lat"], 3)
+
+
 if __name__ == "__main__":
     test_help_status_from_counts()
     test_projeksi_publik()
     test_nearest_in_range()
+    test_density_50m_and_unique_reporters()
     print("ok")

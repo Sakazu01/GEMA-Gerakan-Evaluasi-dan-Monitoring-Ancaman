@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.schemas.report import ReportOut
 from app.schemas.requests import PublishReportRequest
 from app.services.model import AnalyzeResult
-from app.services.rules import help_status_from_counts
+from app.services.rules import haversine_distance_m, help_status_from_counts
 from app.services.supabase_client import get_client
 
 # Suara ikut ditarik lewat embed PostgREST supaya tetap satu query (bukan N+1);
@@ -27,6 +27,7 @@ def _to_public(row: dict[str, Any]) -> ReportOut:
     return ReportOut(
         id=row["id"],
         status=row["status"],
+        responder_status=row.get("responder_status", "PENDING"),
         type=row["type"],
         severity=row["severity"],
         ai_summary=row["ai_summary"],
@@ -57,6 +58,46 @@ def list_active(limit: int) -> list[ReportOut]:
         .execute()
     )
     return [_to_public(row) for row in res.data]
+
+
+def cluster_density_rows(rows: list[dict[str, Any]]) -> list[dict[str, float | int]]:
+    """Hitung pelapor unik dalam 50 m dari titik pusat tiap kelompok."""
+    # ponytail: pemindaian O(n²) cukup untuk demo; pakai agregasi spasial DB jika laporan membesar.
+    groups: list[dict[str, Any]] = []
+    for row in sorted(rows, key=lambda item: (item["published_at"], item["id"])):
+        group = next(
+            (item for item in groups if haversine_distance_m(
+                item["lat"], item["lng"], row["lat"], row["lng"]
+            ) <= 50),
+            None,
+        )
+        if group is None:
+            group = {"lat": row["lat"], "lng": row["lng"], "authors": set()}
+            groups.append(group)
+        group["authors"].add(row["author_id"])
+    return [
+        {
+            "lat": round(group["lat"], _PUBLIC_COORD_DECIMALS),
+            "lng": round(group["lng"], _PUBLIC_COORD_DECIMALS),
+            "count": len(group["authors"]),
+        }
+        for group in groups
+    ]
+
+
+def list_density_points() -> list[dict[str, float | int]]:
+    """Agregasi dari koordinat asli; kirim hanya pusat yang dibulatkan dan jumlah."""
+    now = datetime.now(timezone.utc)
+    res = (
+        get_client()
+        .table("reports")
+        .select("id, author_id, lat, lng, published_at")
+        .eq("status", "active")
+        .gte("published_at", (now - timedelta(hours=24)).isoformat())
+        .lte("published_at", now.isoformat())
+        .execute()
+    )
+    return cluster_density_rows(res.data)
 
 
 def list_all_for_monitoring() -> list[ReportOut]:
@@ -185,7 +226,15 @@ def publish_draft(author_id: str, req: PublishReportRequest) -> tuple[dict[str, 
         .eq("status", "draft")  # jaga-jaga kalau ada dua request barengan
         .execute()
     )
-    return (out.data[0] if out.data else row), False
+    if out.data:
+        return out.data[0], False
+    # Request lain sudah menerbitkan draf ini; jangan kirim notifikasi kedua.
+    latest = (
+        get_client().table("reports")
+        .select("id, status, published_at, author_id, type")
+        .eq("id", str(req.draft_id)).eq("author_id", author_id).limit(1).execute()
+    )
+    return (latest.data[0] if latest.data else {}), True
 
 
 def active_high_risk_candidates() -> list[dict[str, Any]]:

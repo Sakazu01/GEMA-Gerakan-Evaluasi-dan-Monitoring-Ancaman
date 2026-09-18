@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import analyze, my_reports, nearby, reports, votes
+from app.api import analyze, my_reports, nearby, reports, telegram, votes
 from app.core.config import settings
 
 app = FastAPI(title="GEMA API")
@@ -18,6 +18,7 @@ app.include_router(reports.router, prefix="/api")
 app.include_router(nearby.router, prefix="/api")
 app.include_router(my_reports.router, prefix="/api")
 app.include_router(votes.router, prefix="/api")
+app.include_router(telegram.router, prefix="/api")
 
 
 @app.get("/health")

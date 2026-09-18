@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     model_api_key: str = ""
     demo_mode: bool = False
     cors_origins: str = "http://localhost:3000"
+    tele_api: str = ""
+    tele_chat_id: str = ""
+    telegram_webhook_secret: str = ""
 
 
 settings = Settings()

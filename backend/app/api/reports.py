@@ -1,13 +1,23 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.deps.auth import require_user
 from app.schemas.report import ReportOut
 from app.schemas.requests import PublishReportRequest
 from app.services import reports as reports_service
+from app.services import telegram as telegram_service
 
 router = APIRouter(tags=["reports"])
+logger = logging.getLogger(__name__)
+
+
+class DensityPoint(BaseModel):
+    lat: float
+    lng: float
+    count: int
 
 # Handler sengaja `def` (bukan `async def`): klien Supabase sinkron, jadi biar FastAPI
 # jalanin di threadpool dan event loop tidak ikut ke-block.
@@ -18,6 +28,11 @@ def list_reports(limit: int = 50):
     if not 1 <= limit <= 50:
         raise HTTPException(status_code=400, detail="limit harus antara 1 dan 50")
     return reports_service.list_active(limit)
+
+
+@router.get("/reports/density", response_model=list[DensityPoint])
+def list_report_density():
+    return reports_service.list_density_points()
 
 
 # Harus didaftarkan SEBELUM /reports/{report_id} -- kalau tidak, "all" bakal dicoba
@@ -46,6 +61,13 @@ def publish_report(req: PublishReportRequest, user_id: str = Depends(require_use
         raise HTTPException(status_code=409, detail=str(e))
     if not row:
         raise HTTPException(status_code=404, detail="Draf tidak ditemukan")
+    if not sudah_terbit:
+        try:
+            telegram_service.notify_report(row["id"])
+        except Exception as error:
+            # Publikasi tetap sukses walau konfigurasi, jaringan, atau Telegram gagal.
+            detail = str(error) if isinstance(error, telegram_service.TelegramError) else type(error).__name__
+            logger.warning("Laporan %s tersimpan, notifikasi Telegram gagal: %s", row["id"], detail)
     # Terbit dua kali mengembalikan laporan yang sama, bukan marker kedua (PRD §10).
     return {
         "id": row["id"],

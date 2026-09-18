@@ -34,9 +34,10 @@ def analyze(photo: UploadFile, user_id: str = Depends(require_user)):
 
     try:
         result = model_service.analyze_photo(data, photo.content_type)
-    except Exception:
-        # Jangan bocorkan detail/prompt ke browser (PRD §10).
-        raise HTTPException(503, "Analisis belum tersedia. Coba lagi nanti.")
+    except Exception as error:
+        # Catat jenis/kode galat saja; jangan log kunci, prompt, atau isi foto.
+        logger.warning("Analisis AI gagal: %s (kode=%s)", type(error).__name__, getattr(error, "code", "-"))
+        raise HTTPException(503, "Analisis belum tersedia. Coba lagi nanti.") from None
 
     # Server tidak percaya begitu saja keluaran model (PRD §5).
     relevan = (

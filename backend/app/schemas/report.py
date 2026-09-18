@@ -29,6 +29,11 @@ class ReportStatus(str, Enum):
     disputed_hidden = "disputed_hidden"
 
 
+class ResponderStatus(str, Enum):
+    pending = "PENDING"
+    accepted = "ACCEPTED"
+
+
 class LocationSource(str, Enum):
     device = "device"
     map = "map"
@@ -47,6 +52,7 @@ class ReportOut(BaseModel):
 
     id: str
     status: ReportStatus
+    responder_status: ResponderStatus
     type: DisasterType
     severity: Severity
     ai_summary: str
