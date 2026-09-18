@@ -120,9 +120,13 @@ export default function EvakuasiPage() {
           <Link href="/hotline" className="flex min-h-11 items-center justify-center rounded-lg bg-[#CF0003] px-3 text-center font-semibold text-white hover:bg-red-800">
             Jika Terjebak
           </Link>
-          <a href="#di-titik-kumpul" className="flex min-h-11 items-center justify-center rounded-lg bg-[#0D5D3A] px-3 text-center font-semibold text-white hover:bg-[#094a2e]">
+          <button
+            type="button"
+            onClick={() => document.getElementById("di-titik-kumpul")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="flex min-h-11 items-center justify-center rounded-lg bg-[#0D5D3A] px-3 text-center font-semibold text-white hover:bg-[#094a2e]"
+          >
             Di Titik Kumpul
-          </a>
+          </button>
         </div>
         <section id="di-titik-kumpul" aria-labelledby="judul-titik-kumpul" className="mt-5">
           <Card className="border-slate-200">
@@ -142,6 +146,9 @@ export default function EvakuasiPage() {
           </a>
           .
         </p>
+        {/* Ganjal bawah -- tanpa ini, section titik-kumpul tidak bisa discroll sampai
+            benar-benar ke atas layar karena kontennya sudah dekat akhir halaman. */}
+        <div aria-hidden="true" className="h-[50vh]" />
       </main>
       <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
