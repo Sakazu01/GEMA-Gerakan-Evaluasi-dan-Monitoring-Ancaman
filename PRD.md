@@ -1,7 +1,7 @@
 # PRD MVP — GEMA
 
 **Gerakan Evaluasi dan Monitoring Ancaman**
-**Versi:** 2.4 — adaptasi implementasi dari PRD asli v2.1 (18 September 2026)
+**Versi:** 2.5 — adaptasi implementasi dari PRD asli v2.1 (18 September 2026)
 **Konteks:** Hack Day IFest UNPAD 2026, subtema *Accessibility*
 **Status:** dokumen kerja tim — diupdate selama development, bukan spesifikasi beku
 
@@ -29,7 +29,7 @@
 
 ## 1. Ringkasan produk
 
-GEMA adalah **web app mobile-only** (bukan aplikasi native yang perlu diinstal) — warga cukup buka link di browser HP saat kejadian. GEMA membantu warga **melaporkan indikasi bencana dari foto**, melihat **laporan komunitas di peta dan daftar**, membaca **panduan keselamatan** saat dekat laporan berisiko tinggi, dan memberi **konfirmasi warga** soal kedatangan bantuan atau laporan yang diduga tidak benar. MVP menangani **banjir, tanah longsor, dan kebakaran** saja. Produk ini tidak mengirim petugas, tidak menghubungi instansi, dan tidak mengeluarkan peringatan resmi. Tidak ada login di MVP ini — dua sudut pandang (warga/pemerintah) dipilih lewat **role switcher kosmetik** di pojok kiri-bawah (§2, §0); login sungguhan sengaja ditunda ke tahap "kalau produk ini dikembangkan penuh" (§3 — di luar MVP).
+GEMA adalah **web app mobile-only** (bukan aplikasi native yang perlu diinstal) — warga cukup buka link di browser HP saat kejadian. GEMA membantu warga **melaporkan indikasi bencana dari foto**, melihat **laporan komunitas di peta dan daftar**, membaca **panduan keselamatan** saat dekat laporan berisiko tinggi, dan memberi **konfirmasi warga** soal kedatangan bantuan atau laporan yang diduga tidak benar. MVP menangani **banjir, tanah longsor, dan kebakaran** saja. Produk ini tidak mengirim petugas dan tidak mengeluarkan peringatan resmi. Untuk demo, backend mengirim notifikasi laporan ke satu grup Telegram responder yang dikonfigurasi tim; ini bukan integrasi resmi instansi. Tidak ada login di MVP ini — dua sudut pandang (warga/pemerintah) dipilih lewat **role switcher kosmetik** di pojok kiri-bawah (§2, §0); login sungguhan sengaja ditunda ke tahap "kalau produk ini dikembangkan penuh" (§3 — di luar MVP).
 
 **Label peta:** "Laporan warga — belum diverifikasi". Lingkaran merah adalah **area perhatian sementara**, bukan batas bahaya resmi atau rute evakuasi. AI cuma menilai apa yang tampak di foto — tidak bisa memastikan waktu, lokasi, keaslian, atau kedatangan bantuan.
 
@@ -46,6 +46,8 @@ GEMA adalah **web app mobile-only** (bukan aplikasi native yang perlu diinstal) 
 Sama seperti PRD asli §4: beranda peta sebaran (marker + heatmap + area merah + daftar), buat laporan (foto→AI→tinjau→submit), filter gambar tidak relevan, area perhatian (dua kartu, radius mengikuti tingkat keparahan — §9.2), tips evakuasi statis, lacak tanggapan, hotline, sanggah laporan (3 akun → disembunyikan).
 
 **Tambahan v2.2, di luar P0 PRD asli tapi sudah disepakati tim:** role switcher Warga/Pemerintah + dashboard Pemerintah read-only (statistik + tabel semua laporan). Ini kosmetik/demo, bukan fitur produksi — lihat §0 tabel di atas.
+
+**Tambahan v2.5 — notifikasi responder Telegram untuk demo:** setelah laporan diterbitkan, backend mengirim ringkasan AI ke satu grup responder. Anggota grup dapat menekan **TERIMA LAPORAN** melalui tombol Telegram; webhook bersandi mencatat `responder_status=ACCEPTED` dan waktu penerimaan. Tracker pelapor menampilkan empat langkah yang dihubungkan garis, termasuk **Petugas Menuju Lokasi** sebagai langkah keempat. Saat status berubah menjadi `ACCEPTED`, langkah ketiga dan keempat menjadi hijau dan popup **LAPORAN DITERIMA PETUGAS MENUJU LOKASI** tampil selama 10 detik. Penerimaan bukan verifikasi kejadian, keberangkatan, atau kedatangan bantuan. Dashboard Pemerintah di web tetap read-only dan role switcher tetap kosmetik.
 
 ### P1 — setelah P0 stabil
 Sama seperti PRD asli: search/filter di daftar, unggah ulang foto kalau analisis gagal, edit ringkasan AI sebelum submit, basemap satelit opsional.
@@ -88,7 +90,7 @@ Label UI di atas (`TERKENDALI`/`WASPADA`/`BAHAYA`/`KRITIS`) adalah string tetap 
 
 Prompt model harus dikalibrasi ke ambang ini, dikombinasikan dengan input tambahan warga (`water_depth`, `current`, dll — lihat §11 data model), dan **bila ragu pilih tingkat yang lebih rendah** — jangan melebih-lebihkan skala. `severity != rendah` + `status=active` + umur <24 jam adalah pemicu area perhatian (§9.2); radiusnya mengikuti tabel di atas, bukan angka tunggal 300m lagi.
 
-**Target eskalasi instansi (frontend-only, bukan integrasi nyata):** proposal awal tim (Tabel 4.1) punya kolom "Target Eskalasi Instansi" per tingkat keparahan. Ini **sudah diimplementasikan sebagai teks referensi murni di frontend** (`escalationTarget` di `frontend/src/lib/demo-reports.ts`, ditampilkan di kartu "Target eskalasi" pada halaman detail laporan — dipakai bersama oleh alur Warga dan drill-down Pemerintah) — **BUKAN notifikasi/dispatch/integrasi nyata ke instansi mana pun**, konsisten dengan prinsip §4 "tidak menghubungi instansi". Pemetaannya: `rendah`→"Pemantau internal sistem", `sedang`→"Instansi penanggung jawab wilayah", `tinggi`→"Penambahan BASARNAS dan instansi teknis", `kritis`→"Eskalasi hingga tingkat komando nasional". Setiap tampilannya wajib disertai disclaimer bahwa ini referensi, bukan notifikasi yang benar-benar terkirim.
+**Target eskalasi instansi (frontend-only, bukan integrasi nyata):** proposal awal tim (Tabel 4.1) punya kolom "Target Eskalasi Instansi" per tingkat keparahan. Ini **sudah diimplementasikan sebagai teks referensi murni di frontend** (`escalationTarget` di `frontend/src/lib/demo-reports.ts`, ditampilkan di kartu "Target eskalasi" pada halaman detail laporan — dipakai bersama oleh alur Warga dan drill-down Pemerintah) — **BUKAN penentu penerima notifikasi atau dispatch ke instansi**. Notifikasi v2.5 dikirim hanya ke grup responder demo yang dikonfigurasi tim. Pemetaannya: `rendah`→"Pemantau internal sistem", `sedang`→"Instansi penanggung jawab wilayah", `tinggi`→"Penambahan BASARNAS dan instansi teknis", `kritis`→"Eskalasi hingga tingkat komando nasional". Setiap tampilannya wajib disertai disclaimer bahwa ini referensi, bukan notifikasi yang benar-benar terkirim.
 
 Server tetap wajib validasi enum/panjang/kombinasi field — jangan percaya skor kepercayaan model sebagai fakta. Foto lama/dari internet/sintetis bisa lolos; sanggahan warga mengurangi risiko, bukan menyelesaikannya.
 
@@ -111,10 +113,10 @@ Frontend dan backend adalah **dua project independen**, masing-masing dengan `.e
 | Peta | Leaflet 1.9.4 + Leaflet.heat 0.2.0 + tile OpenStreetMap | Sama seperti PRD asli — dynamic import no-SSR di Client Component. |
 | Database & foto | Supabase Postgres + Storage bucket privat | RLS aktif, service/secret key cuma di backend. |
 | Identitas | **Anonymous browser-id**, bukan Supabase anonymous sign-in maupun JWT. Frontend generate id acak sekali per browser (`localStorage: gema:anon-id`, lihat `frontend/src/lib/anon-id.ts`), dikirim tiap request lewat `Authorization: Bearer <id>`. Backend (`app/deps/auth.py: require_user()`) menerima id itu apa adanya sebagai `author_id`/`voter_id`, **tanpa verifikasi kriptografis** — ganti nanti dengan JWT Supabase begitu login sungguhan dibangun. | Role switcher (Warga/Pemerintah) BUKAN pengganti identitas/otentikasi. Anon-id juga bukan otentikasi — cuma cukup untuk fitur "laporan saya"/vote demo tetap konsisten per browser. |
-| Model AI | Belum final provider-nya | Kode & env var generik (`model.py`, `MODEL_API_KEY`), bukan `gemini.py`/`GEMINI_API_KEY`. Implementasi saat ini pakai Gemini (`gemini-3.6-flash`) lewat SDK `google-genai`. |
+| Model AI | Belum final provider-nya | Kode & env var generik (`model.py`, `MODEL_API_KEY`), bukan `gemini.py`/`GEMINI_API_KEY`. Implementasi saat ini pakai Gemini (`gemini-3.1-flash-lite`) lewat SDK `google-genai`. |
 | Deploy | Vercel (frontend) + Render/Railway/Fly (backend) | Satu deployment cukup buat demo juri — tanpa staging/prod terpisah. |
 
-**Peta & heatmap — jawaban langsung:** peta pakai **Leaflet** (`leaflet` 1.9.4) dengan tile **OpenStreetMap** (gratis, tanpa API key). Titik panas kepadatan laporan pakai plugin **Leaflet.heat** (`leaflet.heat` 0.2.0), sumber datanya laporan `active` ≤24 jam dengan koordinat publik dan bobot seragam (aturan lengkap di §9.5). Semua render peta ada di `frontend/src/components/ReportMapCanvas.tsx`, dynamic-import tanpa SSR (Leaflet butuh `window`) lewat wrapper `ReportMap.tsx` yang expose kontrol zoom-in/zoom-out/flyTo ke komponen lain lewat `forwardRef`.
+**Peta — dua mode:** peta memakai **Leaflet** (`leaflet` 1.9.4) dan tile **OpenStreetMap**. Mode awal **Analisis AI** menampilkan severity laporan dan radius perhatian §9.2. Toggle **Kepadatan Laporan** menampilkan jumlah pelapor unik dalam 50 m, dihitung di backend dari koordinat asli tanpa mengirim koordinat/identitas asli ke browser (§9.5). Render peta ada di `frontend/src/components/ReportMapCanvas.tsx`, dynamic-import tanpa SSR lewat `ReportMap.tsx`.
 
 ### 6.1 Daftar dependency lengkap (per hari ini)
 
@@ -122,7 +124,7 @@ Frontend dan backend adalah **dua project independen**, masing-masing dengan `.e
 - `next` 16.3.5 (App Router), `react`/`react-dom` 19.2.8, `typescript` — kerangka & bahasa
 - `tailwindcss` 4 + `@tailwindcss/postcss` — styling utility-class
 - `leaflet` 1.9.4 + `@types/leaflet` — peta
-- `leaflet.heat` 0.2.0 + `@types/leaflet.heat` — layer heatmap kepadatan
+- `leaflet.heat` 0.2.0 + `@types/leaflet.heat` — dependency lama; mode kepadatan sekarang memakai marker jumlah yang dapat dibaca langsung
 - `lucide-react` — satu-satunya sumber ikon (tidak ada icon set lain, tidak bikin SVG custom kalau ikonnya sudah ada di sini)
 - Font: **Plus Jakarta Sans** lewat `next/font/google` (§17.2) — bukan dependency npm terpisah
 
@@ -193,26 +195,28 @@ Hanya laporan `active`, `severity != rendah`, umur ≤24 jam. Jarak Haversine da
 Hanya laporan `active` bisa disanggah, pemilik tidak bisa menyanggah laporan sendiri, satu suara per `(report_id, voter_id)`. Suara ke-3 dari akun berbeda → `disputed_hidden`, dalam satu transaksi SQL atomik.
 
 ### 9.5 Heatmap kepadatan
-Sumber titik cuma laporan `active` yang `published_at` ≤24 jam, koordinat publik (dibulatkan), bobot seragam `1` (jumlah laporan, bukan severity). `radius:25, blur:15, max:4`. Kalau titik 0-2, layer disembunyikan otomatis. Warna heatmap **tidak pernah** memicu tips/kartu/klaim zona merah — itu murni dari §9.2.
+Mode peta awal adalah **Analisis AI**. Pada mode **Kepadatan Laporan**, backend mengelompokkan laporan `active` yang diterbitkan dalam 24 jam terakhir memakai koordinat asli: tiap laporan masuk ke satu kelompok yang pusatnya berjarak ≤50 m, lalu hanya `author_id` unik yang dihitung. Respons `GET /api/reports/density` hanya memuat pusat yang dibulatkan ke 3 desimal dan jumlah pelapor, tanpa identitas atau koordinat asli. Area tanpa laporan pada data yang dimuat berwarna hijau tipis; 1–2 pelapor kuning, 3–9 merah, ≥10 hitam. Angka pada marker dan ukurannya juga menyampaikan jumlah. Ini ukuran kepadatan laporan **belum diverifikasi**, bukan severity AI atau radius bahaya; kartu peringatan tetap hanya mengikuti §9.2.
 
 ## 10. Kontrak API (dari PRD asli §19 — endpoint sama, sekarang di FastAPI bukan Route Handler)
 
 | Endpoint | Auth (implementasi sekarang: Bearer anon-id, lihat §6) | Fungsi |
 |---|---|---|
 | `POST /api/analyze` | Bearer anon-id | Upload foto → panggil model AI → `draft` kalau relevan |
-| `POST /api/reports` | Bearer anon-id pemilik draft | Publish draft → `active`, idempoten per `draft_id` |
-| `GET /api/reports` | Tidak wajib | Proyeksi publik laporan aktif (dipakai marker+heatmap+daftar) |
+| `POST /api/reports` | Bearer anon-id pemilik draft | Publish draft → `active`, idempoten per `draft_id`; upayakan notifikasi Telegram tanpa menggagalkan publikasi |
+| `GET /api/reports` | Tidak wajib | Proyeksi publik laporan aktif (dipakai marker AI dan daftar) |
+| `GET /api/reports/density` | Tidak wajib | Jumlah pelapor unik per kelompok 50 m dari laporan aktif 24 jam; hanya pusat dibulatkan dan jumlah |
 | `GET /api/reports/{id}` | Opsional / Bearer anon-id pemilik | Detail laporan; pemilik bisa lihat status tersembunyi sendiri |
 | `POST /api/nearby` | Bearer anon-id | Hitung `in_red` dari lokasi user (tidak disimpan) |
 | `GET /api/my-reports` | Bearer anon-id | Semua laporan milik pengguna termasuk yang disembunyikan |
 | `POST /api/reports/{id}/false-vote` | Bearer anon-id | Satu suara sanggah per pengguna, hitung ulang atomik |
 | `POST /api/reports/{id}/help-vote` | Bearer anon-id | Simpan/replace `seen`/`not_seen` |
+| `POST /api/telegram/webhook` | Header secret Telegram | Callback tombol responder; validasi chat/pesan, update `responder_status` atomik, edit pesan |
 
 Aturan bersama: validasi berkas/enum/panjang di server (jangan percaya client), `author_id`/`voter_id` selalu dari header `Authorization` (bukan dari body) — **tapi ingat ini id anonim TANPA verifikasi kriptografis** (§6), jadi bukan jaminan identitas asli, cuma konsistensi per browser. `GET /api/reports` tidak boleh bocorkan `photo_path`/`author_id`/koordinat asli, waktu 24 jam pakai jam server.
 
 ## 11. Model data (dari PRD asli §18.1 — tidak berubah bentuknya)
 
-Tabel `reports` (id, author_id, status, created_at, published_at, type, severity, ai_summary, ai_reason, lat/lng asli, location_source, location_label, description, details_json, photo_path, is_demo), `false_votes` (report_id, voter_id unik, reason, created_at), `help_votes` (report_id, voter_id unik, value, created_at). RLS aktif di semua tabel, browser tidak dapat akses tulis langsung — semua lewat backend FastAPI dengan secret key.
+Tabel `reports` (id, author_id, status, created_at, published_at, type, severity, ai_summary, ai_reason, lat/lng asli, location_source, location_label, description, details_json, photo_path, is_demo), `false_votes` (report_id, voter_id unik, reason, created_at), `help_votes` (report_id, voter_id unik, value, created_at). Kolom tambahan di `reports`: `responder_status` (`PENDING`/`ACCEPTED`), `accepted_at`, `accepted_by`, `telegram_chat_id`, `telegram_message_id`. Status ini terpisah dari `reports.status` dan `help_status`; proyeksi laporan publik hanya menambah `responder_status`, tidak mengungkap identitas responder atau ID pesan Telegram. RLS aktif di semua tabel, browser tidak dapat akses tulis langsung — semua lewat backend FastAPI dengan secret key.
 
 `details_json` per jenis: banjir (`water_depth`: `<30cm`/`30-100cm`/`>100cm`/null, `current`: `tenang`/`deras`/null), longsor (`covered_area_m2`), kebakaran (`visibility`: `jelas`/`terbatas`/`sangat_rendah`/null). Nilai "Tidak tahu" disimpan `null`.
 

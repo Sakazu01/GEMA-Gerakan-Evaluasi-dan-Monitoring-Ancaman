@@ -1,12 +1,10 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import L from "leaflet";
 import {
   disasterBadge,
   disasterNames,
-  heatmapBlurPx,
-  heatmapRadiusPx,
   helpResponseLabel,
   isWarningZoneReport,
   severityMap,
@@ -17,6 +15,9 @@ import {
 import type { Report } from "@/types/report";
 
 const initials = { flood: "B", landslide: "L", fire: "K" };
+
+export type MapMode = "ai" | "density";
+export type DensityPoint = { lat: number; lng: number; count: number };
 
 export interface ReportMapHandle {
   zoomIn: () => void;
@@ -138,11 +139,12 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
   location: MapLocation | null;
   onPickLocation: (location: MapLocation) => void;
   fullBleed?: boolean;
-}>(function ReportMapCanvas({ reports, location, onPickLocation, fullBleed = false }, ref) {
+  mode?: MapMode;
+  densityPoints?: DensityPoint[] | null;
+}>(function ReportMapCanvas({ reports, location, onPickLocation, fullBleed = false, mode = "ai", densityPoints = null }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const onPickRef = useRef(onPickLocation);
-  const [heatReady, setHeatReady] = useState(false);
 
   useImperativeHandle(ref, () => ({
     zoomIn: () => mapRef.current?.zoomIn(),
@@ -172,14 +174,7 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
       });
     });
 
-    // Leaflet.heat 0.2.0 adalah plugin global L; impor setelah L tersedia di browser.
-    Object.assign(window, { L });
-    let cancelled = false;
-    void import("leaflet.heat").then(() => {
-      if (!cancelled) setHeatReady(true);
-    });
     return () => {
-      cancelled = true;
       map.remove();
       mapRef.current = null;
     };
@@ -196,46 +191,59 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
     if (!map) return;
     const layers = L.layerGroup().addTo(map);
     const active = reports.filter((report) => report.status === "active");
-    const recent = active.filter((report) => {
-      if (!report.published_at) return false;
-      const age = Date.now() - new Date(report.published_at).getTime();
-      return age >= 0 && age <= 24 * 60 * 60 * 1000;
-    });
-
-    if (heatReady && recent.length >= 3) {
-      L.heatLayer(recent.map((report) => [report.public_lat, report.public_lng, 1]), {
-        radius: heatmapRadiusPx,
-        blur: heatmapBlurPx,
-        max: 8, // dinaikkan dari 4 -- dgn cuma beberapa titik demo, max rendah bikin
-        // heatmap cepat "mentok" jadi satu warna solid, gradasinya jadi tidak kelihatan.
-        gradient: { 0.1: "#1d4ed8", 0.3: "#22c55e", 0.5: "#eab308", 0.7: "#f97316", 1.0: "#dc2626" },
-      }).addTo(layers);
-    }
-
-    for (const report of active) {
-      const style = severityMap[report.severity];
-      if (isWarningZoneReport(report)) {
-        L.circle([report.public_lat, report.public_lng], {
-          radius: style.warningRadiusM,
-          color: style.color,
-          weight: 2,
-          fillColor: style.color,
-          fillOpacity: 0.09,
-        }).bindTooltip(
-          `${disasterNames[report.type]}: ${severityStatusLabel(report.severity)}. Bukan batas bahaya resmi.`
-        ).addTo(layers);
+    if (mode === "density") {
+      if (densityPoints) {
+        // Hijau menandai area tanpa laporan dalam data 24 jam yang dimuat.
+        L.rectangle([[-85, -180], [85, 180]], {
+          stroke: false, fillColor: severityMap.rendah.color, fillOpacity: 0.08, interactive: false,
+        }).addTo(layers);
+        for (const point of densityPoints) {
+          const color = point.count >= 10 ? severityMap.kritis.color
+            : point.count >= 3 ? severityMap.tinggi.color : severityMap.sedang.color;
+          const size = Math.min(100, 44 + Math.round(9 * Math.sqrt(point.count - 1)));
+          const badge = document.createElement("span");
+          badge.textContent = String(point.count);
+          badge.setAttribute("aria-hidden", "true");
+          badge.style.cssText = "display:flex;align-items:center;justify-content:center;border-radius:50%;font-weight:800;border:2px solid white;width:"
+            + size + "px;height:" + size + "px;background:" + color + ";color:"
+            + (point.count <= 2 ? "#111827" : "#FFFFFF") + ";box-shadow:0 0 "
+            + Math.round(size / 2) + "px " + Math.round(size / 4) + "px " + color + "66";
+          const label = point.count + " pelapor dalam radius 50 meter. Laporan warga belum diverifikasi.";
+          const popup = document.createElement("p");
+          popup.textContent = label;
+          L.marker([point.lat, point.lng], {
+            icon: L.divIcon({ className: "", html: badge, iconSize: [size, size], iconAnchor: [size / 2, size / 2] }),
+            title: label,
+            alt: label,
+          }).bindPopup(popup).addTo(layers);
+        }
       }
+    } else {
+      for (const report of active) {
+        const style = severityMap[report.severity];
+        if (isWarningZoneReport(report)) {
+          L.circle([report.public_lat, report.public_lng], {
+            radius: style.warningRadiusM,
+            color: style.color,
+            weight: 2,
+            fillColor: style.color,
+            fillOpacity: 0.09,
+          }).bindTooltip(
+            disasterNames[report.type] + ": " + severityStatusLabel(report.severity) + ". Bukan batas bahaya resmi."
+          ).addTo(layers);
+        }
 
-      const icon = L.divIcon({
-        className: "gema-report-marker",
-        html: `<span class="gema-report-marker__inner" style="background:${style.color};color:${style.textColor}" aria-hidden="true">${initials[report.type]}</span>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-      });
-      L.marker([report.public_lat, report.public_lng], {
-        icon,
-        title: `${disasterNames[report.type]}, ${severityStatusLabel(report.severity)}, ${report.location_label}`,
-      }).bindPopup(buildReportPopup(report, location), { minWidth: 260 }).addTo(layers);
+        const icon = L.divIcon({
+          className: "gema-report-marker",
+          html: `<span class="gema-report-marker__inner" style="background:${style.color};color:${style.textColor}" aria-hidden="true">${initials[report.type]}</span>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        });
+        L.marker([report.public_lat, report.public_lng], {
+          icon,
+          title: `${disasterNames[report.type]}, ${severityStatusLabel(report.severity)}, ${report.location_label}`,
+        }).bindPopup(buildReportPopup(report, location), { minWidth: 260 }).addTo(layers);
+      }
     }
 
     if (location) {
@@ -250,14 +258,14 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
     return () => {
       layers.remove();
     };
-  }, [reports, location, heatReady]);
+  }, [reports, location, mode, densityPoints]);
 
   return (
     <div
       ref={containerRef}
       className={fullBleed ? "h-full w-full" : "h-96 w-full rounded-lg border border-slate-300"}
       role="img"
-      aria-label="Peta laporan warga. Daftar laporan lengkap tersedia tepat setelah peta."
+      aria-label={mode === "density" ? "Peta kepadatan pelapor dalam radius 50 meter. Jumlah ditulis pada tiap lingkaran." : "Peta keparahan laporan warga berdasarkan analisis AI. Daftar laporan tersedia setelah peta."}
     />
   );
 });

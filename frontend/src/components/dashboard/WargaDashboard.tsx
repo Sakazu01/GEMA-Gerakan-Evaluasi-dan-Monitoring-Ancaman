@@ -13,7 +13,7 @@ import { severityMap, severityOrder, type MapLocation } from "@/lib/demo-reports
 import { useDemoReports } from "@/lib/demo-report-context";
 import { apiFetch } from "@/lib/api-client";
 import type { Report } from "@/types/report";
-import type { ReportMapHandle } from "@/components/ReportMapCanvas";
+import type { DensityPoint, MapMode, ReportMapHandle } from "@/components/ReportMapCanvas";
 
 interface NearbyResponse {
   in_red: boolean;
@@ -34,10 +34,22 @@ export function WargaDashboard({
   const activeReports = reports.filter((report) => report.status === "active");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mapMode, setMapMode] = useState<MapMode>("ai");
+  const [densityPoints, setDensityPoints] = useState<DensityPoint[] | null>(null);
+  const [densityError, setDensityError] = useState("");
   const [legendOpen, setLegendOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMessage, setSearchMessage] = useState("");
   const mapRef = useRef<ReportMapHandle>(null);
+
+  useEffect(() => {
+    if (mapMode !== "density" || loading) return;
+    let cancelled = false;
+    apiFetch<DensityPoint[]>("/api/reports/density")
+      .then((points) => { if (!cancelled) setDensityPoints(points); })
+      .catch((cause: Error) => { if (!cancelled) setDensityError(cause.message); });
+    return () => { cancelled = true; };
+  }, [mapMode, loading, reports]);
 
   useEffect(() => {
     if (!legendOpen) return;
@@ -103,7 +115,7 @@ export function WargaDashboard({
             Leaflet (panes/kontrolnya bisa sampai 1000+) dalam stacking context-nya sendiri,
             supaya gak bocor nutupin overlay lain (search bar dll) yang z-index-nya lebih kecil. */}
         <div className="absolute inset-0 top-[95px] z-0">
-          <ReportMap ref={mapRef} reports={activeReports} location={location} onPickLocation={onLocationChange} fullBleed />
+          <ReportMap ref={mapRef} reports={activeReports} location={location} onPickLocation={onLocationChange} fullBleed mode={mapMode} densityPoints={densityPoints} />
         </div>
 
         <form
@@ -134,7 +146,7 @@ export function WargaDashboard({
         )}
 
         {locationMessage && (
-          <p role="status" className="absolute left-4 right-16 top-[210px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800">
+          <p role="status" className={mapMode === "density" ? "absolute left-4 right-16 top-[410px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800" : "absolute left-4 right-16 top-[275px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800"}>
             {locationMessage}
           </p>
         )}
@@ -143,6 +155,39 @@ export function WargaDashboard({
           <br />
           Lon: {location ? location.lng.toFixed(4) : "–"}
         </p>
+
+        <div role="group" aria-label="Tampilan peta" className="absolute left-4 right-4 top-[215px] z-10 flex gap-2 rounded-xl bg-white/95 p-1 shadow">
+          <button type="button" aria-pressed={mapMode === "ai"} onClick={() => setMapMode("ai")}
+            className={mapMode === "ai" ? "min-h-11 min-w-0 flex-1 rounded-lg bg-[#0D5D3A] px-2 text-sm font-bold text-white" : "min-h-11 min-w-0 flex-1 rounded-lg px-2 text-sm font-semibold text-slate-800"}>
+            Analisis AI
+          </button>
+          <button type="button" aria-pressed={mapMode === "density"}
+            onClick={() => { setMapMode("density"); setDensityPoints(null); setDensityError(""); }}
+            className={mapMode === "density" ? "min-h-11 min-w-0 flex-1 rounded-lg bg-[#0D5D3A] px-2 text-sm font-bold text-white" : "min-h-11 min-w-0 flex-1 rounded-lg px-2 text-sm font-semibold text-slate-800"}>
+            Kepadatan Laporan
+          </button>
+        </div>
+        {mapMode === "density" && (
+          <div className="absolute left-4 right-4 top-[274px] z-10 rounded-xl bg-white/95 px-3 py-2 text-xs text-slate-900 shadow">
+            <p className="font-semibold">Jumlah pelapor dalam radius 50 m · 24 jam terakhir</p>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+              {[
+                { count: "0", label: "Hijau", color: severityMap.rendah.color },
+                { count: "1–2", label: "Kuning", color: severityMap.sedang.color },
+                { count: "3–9", label: "Merah", color: severityMap.tinggi.color },
+                { count: "10+", label: "Hitam", color: severityMap.kritis.color },
+              ].map((item) => (
+                <span key={item.count} className="inline-flex items-center gap-1">
+                  <span aria-hidden="true" className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                  {item.count} {item.label}
+                </span>
+              ))}
+            </div>
+            <p className="mt-1">Laporan warga belum diverifikasi. Ukuran lingkaran mengikuti jumlah pelapor, bukan luas bahaya.</p>
+            {densityPoints === null && !densityError && <p role="status" className="mt-1">Memuat kepadatan…</p>}
+            {densityError && <p role="alert" className="mt-1 text-red-800">Gagal memuat kepadatan: {densityError}</p>}
+          </div>
+        )}
 
         <div className="absolute right-4 top-[111px] z-10 flex flex-col gap-3">
           <div className="overflow-hidden rounded-lg border border-[#CECECE] bg-white/50 backdrop-blur-sm">
@@ -243,9 +288,15 @@ export function WargaDashboard({
           )}
           <ZoneCards nearest={nearest} />
 
+          <section aria-label="Legenda kepadatan laporan" className={mapMode === "density" ? "" : "hidden"}>
+            <Card className="border-slate-200">
+              <h2 className="mb-2 font-bold text-slate-900">Kepadatan laporan dalam radius 50 m</h2>
+              <p className="text-sm text-slate-700">Hijau: 0 pelapor; kuning: 1–2; merah: 3–9; hitam: 10 atau lebih. Perhitungan memakai laporan aktif 24 jam terakhir. Warna ini menunjukkan jumlah pelapor, bukan tingkat keparahan atau batas bahaya.</p>
+            </Card>
+          </section>
           <section aria-label="Legenda tingkat keparahan">
             <Card className="border-slate-200">
-              <h2 className="mb-3 font-bold text-slate-900">Tingkat keparahan</h2>
+              <h2 className="mb-3 font-bold text-slate-900">Tingkat keparahan hasil AI</h2>
               <ul className="flex flex-wrap gap-2">
                 {severityOrder.map((severity) => (
                   <li key={severity} className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm">
