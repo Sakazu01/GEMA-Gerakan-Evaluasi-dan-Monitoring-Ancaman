@@ -1,7 +1,6 @@
 export type DisasterType = "flood" | "landslide" | "fire";
-// "tinggi" = perlu evakuasi/respons SEGERA (mis. banjir dalam + arus deras), bukan cuma
-// "kelihatan besar di foto" — beda dari genangan biasa (rendah/sedang). Lihat PRD §16.2.
-export type Severity = "rendah" | "sedang" | "tinggi";
+// PRD v2.3 menambah kritis; backend/app/schemas/report.py perlu disinkronkan sebelum C1.
+export type Severity = "rendah" | "sedang" | "tinggi" | "kritis";
 export type ReportStatus = "draft" | "active" | "disputed_hidden";
 export type LocationSource = "device" | "map" | "demo";
 export type HelpVoteValue = "seen" | "not_seen";
