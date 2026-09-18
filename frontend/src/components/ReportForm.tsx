@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
-import { Camera, ChevronLeft, Menu } from "lucide-react";
+import { Camera, ChevronLeft, Loader2 } from "lucide-react";
+import { AppHeader } from "@/components/AppHeader";
 import { LocationPicker } from "@/components/LocationPicker";
+import { NavDrawer } from "@/components/NavDrawer";
 import { ReportMap } from "@/components/ReportMap";
-import { disasterBadge, type MapLocation } from "@/lib/demo-reports";
+import { disasterBadge, disasterGuides, severityMap, type MapLocation } from "@/lib/demo-reports";
 import { apiFetch } from "@/lib/api-client";
 import { requestDeviceLocation } from "@/lib/geolocation";
 import type { AnalyzeResponse, FireDetails, FloodDetails, ReportDetails } from "@/types/report";
@@ -13,25 +15,9 @@ import type { AnalyzeResponse, FireDetails, FloodDetails, ReportDetails } from "
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-// Sesuai PRD §6.4 -- sama untuk ketiga jenis bencana, cuma radiusnya sekarang ikut
-// tingkat keparahan (§9.2), bukan angka tunggal 300m lagi.
-const SAFETY_TIPS = [
-  "Jangan mendekati pusat bencana.",
-  "Kirim laporan ini agar warga di sekitar area menerima peringatan sesuai tingkat keparahannya.",
-  "Ikuti jalur evakuasi jika diinstruksikan oleh petugas.",
-];
-
-function GemaHeader() {
-  return (
-    <header className="flex h-16 items-center justify-between bg-[#0D5D3A] px-4">
-      <Link href="/" className="text-lg font-bold text-white">GEMA</Link>
-      <Menu aria-hidden="true" className="text-white" size={22} />
-    </header>
-  );
-}
-
 export function ReportForm() {
   const [step, setStep] = useState<"capture" | "review">("capture");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState("");
@@ -163,7 +149,7 @@ export function ReportForm() {
   if (submittedId) {
     return (
       <div className="min-h-dvh bg-[#F7F6E4]">
-        <GemaHeader />
+        <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
         <div className="mx-auto max-w-md space-y-4 p-6 text-center">
           <h1 className="text-xl font-bold text-slate-950">Laporan warga berhasil diterbitkan</h1>
           <p className="text-slate-700">Informasi belum diverifikasi petugas.</p>
@@ -172,6 +158,7 @@ export function ReportForm() {
             <Link href={`/report/${submittedId}`} className="min-h-11 rounded-lg border border-[#0D5D3A] px-4 py-2 font-semibold text-[#0D5D3A]">Lihat detail laporan</Link>
           </div>
         </div>
+        <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
     );
   }
@@ -180,7 +167,7 @@ export function ReportForm() {
   if (step === "capture") {
     return (
       <div className="flex min-h-dvh flex-col bg-[#0D5D3A]">
-        <GemaHeader />
+        <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
         <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
           onChange={choosePhoto} className="hidden" />
         <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
@@ -194,10 +181,17 @@ export function ReportForm() {
               <p className="px-8 text-center text-white/80">Ketuk tombol di bawah untuk mengambil atau memilih foto kejadian.</p>
             </div>
           )}
-          {photoUrl && (
+          {photoUrl && !analyzing && (
             <p className="absolute left-0 right-0 top-3 bg-black/30 py-1 text-center text-sm text-white">
               Pastikan kamera anda stabil
             </p>
+          )}
+          {analyzing && (
+            <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 text-white">
+              <Loader2 aria-hidden="true" size={40} className="animate-spin" />
+              <p className="font-semibold">Menganalisis foto…</p>
+              <p className="px-8 text-center text-sm text-white/80">Sistem sedang memeriksa jenis dan tingkat keparahan bencana dari foto.</p>
+            </div>
           )}
         </div>
         {fileError && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{fileError}</p>}
@@ -223,6 +217,7 @@ export function ReportForm() {
             {analyzing ? "Menganalisis foto..." : "Analisis foto"}
           </button>}
         </div>
+        <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
     );
   }
@@ -230,32 +225,40 @@ export function ReportForm() {
   // Layar 3-5 wireframe: "Hasil Identifikasi", field beda per jenis bencana.
   const relevant = analysis?.validity === "relevant" ? analysis : null;
   const badge = relevant ? disasterBadge[relevant.type] : null;
+  const severity = relevant ? severityMap[relevant.severity] : null;
+  const guide = relevant ? disasterGuides[relevant.type] : null;
   return (
     <div className="min-h-dvh bg-[#F7F6E4]">
-      <GemaHeader />
+      <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
       <form onSubmit={sendReport} className="mx-auto max-w-md space-y-4 p-4">
         <button type="button" onClick={() => setStep("capture")} className="flex min-h-11 items-center gap-1 font-bold text-[#0D5D3A]">
           <ChevronLeft aria-hidden="true" size={22} /> Hasil Identifikasi
         </button>
 
-        {badge && relevant && (
+        {badge && relevant && severity && guide && (
           <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold text-white" style={{ background: badge.bg }}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- ikon PNG kecil, next/image tidak perlu di sini. */}
-              <img src={badge.icon} alt="" width={16} height={16} /> {badge.label}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold text-white" style={{ background: badge.bg }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- ikon PNG kecil, next/image tidak perlu di sini. */}
+                <img src={badge.icon} alt="" width={16} height={16} /> {badge.label}
+              </span>
+              <span className="rounded-full px-3 py-1 text-sm font-bold" style={{ background: severity.color, color: severity.textColor }}>
+                {severity.label}
+              </span>
+            </div>
             <p className="mt-3 text-sm text-slate-700">
               {locationLabel || "Lokasi belum dipilih"}, {analyzedAt && new Date(analyzedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
             </p>
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-800">
-              {SAFETY_TIPS.map((tip) => <li key={tip}>{tip}</li>)}
-            </ul>
             <p className="mt-3 text-sm text-slate-700">{relevant.summary}</p>
+            <p className="mt-3 font-semibold text-slate-900">{guide.headline} — yang perlu dilakukan:</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-800">
+              {guide.do.map((tip) => <li key={tip}>{tip}</li>)}
+            </ul>
           </div>
         )}
 
         <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <LocationPicker location={location} onChange={chooseLocation} forReport message={locationMessage} />
+          <LocationPicker location={location} message={locationMessage} />
           <div className="mt-3">
             <ReportMap reports={[]} location={location} onPickLocation={chooseLocation} pickerOnly />
           </div>
@@ -315,6 +318,7 @@ export function ReportForm() {
           {submitting ? "Laporan sedang dikirim…" : "Unggah"}
         </button>
       </form>
+      <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
   );
 }

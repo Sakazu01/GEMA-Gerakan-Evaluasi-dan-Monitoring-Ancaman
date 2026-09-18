@@ -94,7 +94,7 @@ function buildReportPopup(report: Report, location: MapLocation | null): HTMLEle
 
   const summary = document.createElement("p");
   summary.className = "gema-popup__summary";
-  summary.textContent = `${report.ai_summary}${report.is_demo ? " (DEMO)" : ""}`;
+  summary.textContent = report.ai_summary;
   body.appendChild(summary);
 
   const footer = document.createElement("p");
@@ -181,7 +181,9 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
       L.heatLayer(recent.map((report) => [report.public_lat, report.public_lng, 1]), {
         radius: heatmapRadiusPx,
         blur: heatmapBlurPx,
-        max: 4,
+        max: 8, // dinaikkan dari 4 -- dgn cuma beberapa titik demo, max rendah bikin
+        // heatmap cepat "mentok" jadi satu warna solid, gradasinya jadi tidak kelihatan.
+        gradient: { 0.1: "#1d4ed8", 0.3: "#22c55e", 0.5: "#eab308", 0.7: "#f97316", 1.0: "#dc2626" },
       }).addTo(layers);
     }
 

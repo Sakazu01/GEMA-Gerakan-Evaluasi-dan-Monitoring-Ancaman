@@ -1,7 +1,7 @@
 # PRD MVP — GEMA
 
 **Gerakan Evaluasi dan Monitoring Ancaman**
-**Versi:** 2.3 — adaptasi implementasi dari PRD asli v2.1 (17 September 2026)
+**Versi:** 2.4 — adaptasi implementasi dari PRD asli v2.1 (18 September 2026)
 **Konteks:** Hack Day IFest UNPAD 2026, subtema *Accessibility*
 **Status:** dokumen kerja tim — diupdate selama development, bukan spesifikasi beku
 
@@ -9,7 +9,7 @@
 
 ## 0. Perubahan dari PRD asli v2.1 (baca ini dulu)
 
-| Topik | PRD asli v2.1 | Keputusan aktual (v2.2) | Kenapa |
+| Topik | PRD asli v2.1 | Keputusan aktual (sekarang) | Kenapa |
 |---|---|---|---|
 | Bentuk aplikasi | Satu repo Next.js, Route Handlers jadi backend | **Dua folder terpisah**: `frontend/` (Next.js) dan `backend/` (Python FastAPI) | Permintaan tim — biar dua orang bisa kerja paralel tanpa bentrok file, dan salah satu anggota lebih familiar Python |
 | Bahasa backend | TypeScript (Route Handlers) | **Python (FastAPI)** | Sama seperti di atas |
@@ -20,6 +20,8 @@
 | Pembagian kerja | 4 jalur (A/B/C/D) | **2 orang**: satu pegang `backend/`, satu pegang `frontend/` | Tim cuma 2 orang; boundary folder otomatis mencegah bentrok merge |
 | Deploy | Opsional, localhost cukup | **Akan di-deploy** (Vercel utk frontend + Render/Railway/Fly utk backend) supaya juri bisa akses sendiri | Permintaan tim: juri harus bisa coba alurnya sendiri, bukan cuma nonton video |
 | Kriteria AI tambahan | Severity cuma "penilaian visual sementara" | **Eksplisit**: `severity="tinggi"` = perlu evakuasi/respons SEGERA (mis. banjir dalam+arus deras), beda dari genangan biasa (`rendah`/`sedang`) | Permintaan tim — pastikan sistem bisa bedain kejadian mendesak vs tidak, bukan cuma "ada air di foto" |
+| Platform target | Web responsif (implisit: desktop+mobile) | **Web app mobile-only**, BUKAN aplikasi native/APK — layout, ukuran font, dan interaksi (peta full-bleed, tombol mengambang, drawer) dirancang khusus utk viewport ~360–430px, TIDAK dioptimalkan untuk desktop | Warga cukup buka link di browser HP-nya saat kejadian, tanpa install apa pun (beda dari native app yang perlu download+izin dulu) — kecepatan lapor lebih penting daripada distribusi lewat app store. Warga cuma punya HP, bukan multi-device, jadi tidak perlu breakpoint desktop |
+| Identitas sementara | "Belum ada" (ditulis sebagai placeholder nanti) | **Anonymous browser-id**: frontend generate id acak (`localStorage: gema:anon-id`), dikirim sebagai `Authorization: Bearer <id>` di setiap request; backend (`deps/auth.py`) terima apa adanya TANPA verifikasi | Supaya endpoint yang butuh `author_id`/`voter_id` (my-reports, vote, publish) bisa diuji & dipakai demo sebelum login sungguhan ada — bukan keamanan nyata, siapa pun bisa ganti id di localStorage |
 
 **Yang TIDAK berubah** (masih ikut PRD asli v2.1 apa adanya): cakupan bencana (banjir/longsor/kebakaran), bahasa produk (semua UI bahasa Indonesia), aturan bisnis (§9 di bawah — radius peringatan per severity §9.2, ambang sanggahan 3 akun, ambang bantuan 2 suara), prinsip aksesibilitas, larangan klaim berlebihan ("belum diverifikasi", bukan "terverifikasi"), dan seluruh 14 skenario penerimaan (AC-01 s.d. AC-14).
 
@@ -27,7 +29,7 @@
 
 ## 1. Ringkasan produk
 
-GEMA membantu warga **melaporkan indikasi bencana dari foto**, melihat **laporan komunitas di peta dan daftar**, membaca **panduan keselamatan** saat dekat laporan berisiko tinggi, dan memberi **konfirmasi warga** soal kedatangan bantuan atau laporan yang diduga tidak benar. MVP menangani **banjir, tanah longsor, dan kebakaran** saja. Produk ini tidak mengirim petugas, tidak menghubungi instansi, dan tidak mengeluarkan peringatan resmi.
+GEMA adalah **web app mobile-only** (bukan aplikasi native yang perlu diinstal) — warga cukup buka link di browser HP saat kejadian. GEMA membantu warga **melaporkan indikasi bencana dari foto**, melihat **laporan komunitas di peta dan daftar**, membaca **panduan keselamatan** saat dekat laporan berisiko tinggi, dan memberi **konfirmasi warga** soal kedatangan bantuan atau laporan yang diduga tidak benar. MVP menangani **banjir, tanah longsor, dan kebakaran** saja. Produk ini tidak mengirim petugas, tidak menghubungi instansi, dan tidak mengeluarkan peringatan resmi. Tidak ada login di MVP ini — dua sudut pandang (warga/pemerintah) dipilih lewat **role switcher kosmetik** di pojok kiri-bawah (§2, §0); login sungguhan sengaja ditunda ke tahap "kalau produk ini dikembangkan penuh" (§3 — di luar MVP).
 
 **Label peta:** "Laporan warga — belum diverifikasi". Lingkaran merah adalah **area perhatian sementara**, bukan batas bahaya resmi atau rute evakuasi. AI cuma menilai apa yang tampak di foto — tidak bisa memastikan waktu, lokasi, keaslian, atau kedatangan bantuan.
 
@@ -53,6 +55,7 @@ Login sungguhan, dispatch bantuan, verifikasi instansi, notifikasi push, chat, p
 
 ## 4. Prinsip produk
 
+0. **Mobile-only** — produk ini HANYA didesain untuk dibuka di HP (viewport ~360–430px). Setiap layar (peta, form laporan, dashboard warga) dibangun full-bleed/mobile-first; tidak ada breakpoint desktop terpisah, jadi tampilan di layar lebar boleh terlihat sempit/tidak proporsional — itu bukan bug. Kecuali: dashboard Pemerintah (§3) tetap tabel biasa karena murni demo baca-baca, bukan alur warga.
 1. **Aksesibilitas fungsi inti** — peta selalu ditemani daftar teks; status pakai kata+ikon, bukan warna saja; semua kontrol punya label dan urutan fokus logis.
 2. **Bahasa tidak boleh melebihkan bukti** — pakai "indikasi", "berdasarkan foto", "dilaporkan warga", "belum terverifikasi". Hindari "bencana pasti terjadi", "zona aman", "bantuan resmi sudah tiba".
 3. **Lokasi perkiraan** — izin lokasi diminta seperlunya; kalau ditolak, pilih titik manual. Peta publik membulatkan koordinat ~100m; pemeriksaan kedekatan pakai koordinat asli di server.
@@ -74,16 +77,18 @@ reason_id: string <= 120 karakter
 
 **Kriteria `severity` (v2.3 — 4 tingkat, bukan 3):** setiap tingkat sekarang punya radius peringatan sendiri (lihat §9.2), bukan cuma satu ambang "tinggi" seperti versi sebelumnya:
 
-| Tingkat | Contoh visual | Radius peringatan |
-|---|---|---|
-| `rendah` | Genangan dangkal tenang, sisa material kecil | Tidak ada — tidak pernah memicu peringatan |
-| `sedang` | Kejadian jelas terlihat tapi tidak bahaya langsung | 1 km |
-| `tinggi` | Bahaya besar butuh evakuasi SEGERA, cakupan lokal (satu jalan/bangunan) | 3 km |
-| `kritis` | Bahaya skala luas/regional (banyak rumah/jalan sekaligus) | 10 km |
+| Tingkat | Label UI (badge warna) | Contoh visual | Radius peringatan |
+|---|---|---|---|
+| `rendah` | TERKENDALI (hijau) | Genangan dangkal tenang, sisa material kecil | Tidak ada — tidak pernah memicu peringatan |
+| `sedang` | WASPADA (kuning) | Kejadian jelas terlihat tapi tidak bahaya langsung | 1 km |
+| `tinggi` | BAHAYA (merah) | Bahaya besar butuh evakuasi SEGERA, cakupan lokal (satu jalan/bangunan) | 3 km |
+| `kritis` | KRITIS (hitam) | Bahaya skala luas/regional (banyak rumah/jalan sekaligus) | 10 km |
+
+Label UI di atas (`TERKENDALI`/`WASPADA`/`BAHAYA`/`KRITIS`) adalah string tetap yang dipakai di semua tempat severity ditampilkan ke warga (legenda beranda, badge daftar laporan, halaman detail) — didefinisikan satu tempat di `frontend/src/lib/demo-reports.ts` (`severityMap`). Jangan buat label baru di komponen lain; import dari sana.
 
 Prompt model harus dikalibrasi ke ambang ini, dikombinasikan dengan input tambahan warga (`water_depth`, `current`, dll — lihat §11 data model), dan **bila ragu pilih tingkat yang lebih rendah** — jangan melebih-lebihkan skala. `severity != rendah` + `status=active` + umur <24 jam adalah pemicu area perhatian (§9.2); radiusnya mengikuti tabel di atas, bukan angka tunggal 300m lagi.
 
-**Di luar cakupan backend saat ini:** proposal awal tim juga punya kolom "Target Eskalasi Instansi" (mis. BASARNAS) per tingkat keparahan. Ini **TIDAK diimplementasikan sebagai notifikasi/integrasi nyata** — konsisten dengan prinsip §4 "tidak menghubungi instansi". Kalau dipakai, itu murni teks informasi di frontend (roadmap Track B), bukan logika backend.
+**Target eskalasi instansi (frontend-only, bukan integrasi nyata):** proposal awal tim (Tabel 4.1) punya kolom "Target Eskalasi Instansi" per tingkat keparahan. Ini **sudah diimplementasikan sebagai teks referensi murni di frontend** (`escalationTarget` di `frontend/src/lib/demo-reports.ts`, ditampilkan di kartu "Target eskalasi" pada halaman detail laporan — dipakai bersama oleh alur Warga dan drill-down Pemerintah) — **BUKAN notifikasi/dispatch/integrasi nyata ke instansi mana pun**, konsisten dengan prinsip §4 "tidak menghubungi instansi". Pemetaannya: `rendah`→"Pemantau internal sistem", `sedang`→"Instansi penanggung jawab wilayah", `tinggi`→"Penambahan BASARNAS dan instansi teknis", `kritis`→"Eskalasi hingga tingkat komando nasional". Setiap tampilannya wajib disertai disclaimer bahwa ini referensi, bukan notifikasi yang benar-benar terkirim.
 
 Server tetap wajib validasi enum/panjang/kombinasi field — jangan percaya skor kepercayaan model sebagai fakta. Foto lama/dari internet/sintetis bisa lolos; sanggahan warga mengurangi risiko, bukan menyelesaikannya.
 
@@ -105,9 +110,31 @@ Frontend dan backend adalah **dua project independen**, masing-masing dengan `.e
 | Backend | Python + FastAPI | Semua endpoint REST (§10). Deploy ke platform yang auto-detect Python (Render/Railway/Fly — pilih satu, tanpa Docker/IaC kalau platform sudah cukup). |
 | Peta | Leaflet 1.9.4 + Leaflet.heat 0.2.0 + tile OpenStreetMap | Sama seperti PRD asli — dynamic import no-SSR di Client Component. |
 | Database & foto | Supabase Postgres + Storage bucket privat | RLS aktif, service/secret key cuma di backend. |
-| Identitas | **Belum ada** di tahap ini; PRD asli merekomendasikan Supabase anonymous sign-in buat versi berikutnya | Role switcher (Warga/Pemerintah) BUKAN pengganti identitas/otentikasi. |
-| Model AI | Belum final provider-nya | Kode & env var generik (`model.py`, `MODEL_API_KEY`), bukan `gemini.py`/`GEMINI_API_KEY`. |
+| Identitas | **Anonymous browser-id**, bukan Supabase anonymous sign-in maupun JWT. Frontend generate id acak sekali per browser (`localStorage: gema:anon-id`, lihat `frontend/src/lib/anon-id.ts`), dikirim tiap request lewat `Authorization: Bearer <id>`. Backend (`app/deps/auth.py: require_user()`) menerima id itu apa adanya sebagai `author_id`/`voter_id`, **tanpa verifikasi kriptografis** — ganti nanti dengan JWT Supabase begitu login sungguhan dibangun. | Role switcher (Warga/Pemerintah) BUKAN pengganti identitas/otentikasi. Anon-id juga bukan otentikasi — cuma cukup untuk fitur "laporan saya"/vote demo tetap konsisten per browser. |
+| Model AI | Belum final provider-nya | Kode & env var generik (`model.py`, `MODEL_API_KEY`), bukan `gemini.py`/`GEMINI_API_KEY`. Implementasi saat ini pakai Gemini (`gemini-3.6-flash`) lewat SDK `google-genai`. |
 | Deploy | Vercel (frontend) + Render/Railway/Fly (backend) | Satu deployment cukup buat demo juri — tanpa staging/prod terpisah. |
+
+**Peta & heatmap — jawaban langsung:** peta pakai **Leaflet** (`leaflet` 1.9.4) dengan tile **OpenStreetMap** (gratis, tanpa API key). Titik panas kepadatan laporan pakai plugin **Leaflet.heat** (`leaflet.heat` 0.2.0), sumber datanya laporan `active` ≤24 jam dengan koordinat publik dan bobot seragam (aturan lengkap di §9.5). Semua render peta ada di `frontend/src/components/ReportMapCanvas.tsx`, dynamic-import tanpa SSR (Leaflet butuh `window`) lewat wrapper `ReportMap.tsx` yang expose kontrol zoom-in/zoom-out/flyTo ke komponen lain lewat `forwardRef`.
+
+### 6.1 Daftar dependency lengkap (per hari ini)
+
+**Frontend** (`frontend/package.json`):
+- `next` 16.3.5 (App Router), `react`/`react-dom` 19.2.8, `typescript` — kerangka & bahasa
+- `tailwindcss` 4 + `@tailwindcss/postcss` — styling utility-class
+- `leaflet` 1.9.4 + `@types/leaflet` — peta
+- `leaflet.heat` 0.2.0 + `@types/leaflet.heat` — layer heatmap kepadatan
+- `lucide-react` — satu-satunya sumber ikon (tidak ada icon set lain, tidak bikin SVG custom kalau ikonnya sudah ada di sini)
+- Font: **Plus Jakarta Sans** lewat `next/font/google` (§17.2) — bukan dependency npm terpisah
+
+**Backend** (`backend/requirements.txt`):
+- `fastapi` — kerangka REST API
+- `uvicorn[standard]` — server ASGI
+- `pydantic-settings` — baca `backend/.env` jadi objek config tervalidasi
+- `python-multipart` — wajib supaya FastAPI bisa terima upload foto (`UploadFile`) di `/api/analyze`
+- `supabase` (supabase-py) — client Postgres + Storage
+- `google-genai` — SDK Gemini buat `services/model.py`
+
+Tidak ada ORM (query lewat `supabase-py` langsung), tidak ada state management library di frontend (cukup `useState`/Context bawaan React — lihat `role-context.tsx`, `demo-report-context.tsx`), tidak ada UI component library (semua elemen ditulis manual dengan Tailwind, cuma satu `ui/Card.tsx` generik).
 
 **Batasan keamanan sementara yang harus dipahami tim:** role switcher itu murni state UI (`localStorage`) tanpa proteksi backend nyata. Endpoint yang nanti dipakai dashboard Pemerintah buat lihat laporan `disputed_hidden` (harusnya privat per §9.2 PRD asli) belum digate oleh role/JWT asli — ditandai `// ponytail:` di kode. Upgrade path: gate dengan role asli begitu ada login sungguhan.
 
@@ -121,10 +148,12 @@ GEMA-Gerakan-Evaluasi-dan-Monitoring-Ancaman/
 ├─ frontend/
 │  ├─ .env.example / .env.local      # NEXT_PUBLIC_* saja
 │  └─ src/
-│     ├─ app/                        # /, /report/new, /report/[id], /track, /hotline
-│     ├─ components/                 # ReportMap, ReportList, ReportForm, LocationPicker,
-│     │                              # ZoneCards, RoleSwitcher, ui/Card, dashboard/*
-│     ├─ lib/                        # role-context.tsx, api-client.ts
+│     ├─ app/                        # /, /report/new, /report/[id], /track, /hotline, /evakuasi
+│     ├─ components/                 # ReportMap(+Canvas), ReportList, ReportDetail, ReportForm,
+│     │                              # LocationPicker, ZoneCards, NavDrawer, RoleSwitcher,
+│     │                              # ui/Card, dashboard/*
+│     ├─ lib/                        # role-context.tsx, demo-report-context.tsx, api-client.ts,
+│     │                              # anon-id.ts, geolocation.ts, demo-reports.ts (severityMap dll)
 │     └─ types/report.ts             # kontrak tipe (kembar dengan backend/app/schemas)
 └─ backend/
    ├─ .env.example / .env            # SUPABASE_*, MODEL_API_KEY, DEMO_MODE, CORS_ORIGINS
@@ -168,18 +197,18 @@ Sumber titik cuma laporan `active` yang `published_at` ≤24 jam, koordinat publ
 
 ## 10. Kontrak API (dari PRD asli §19 — endpoint sama, sekarang di FastAPI bukan Route Handler)
 
-| Endpoint | Auth | Fungsi |
+| Endpoint | Auth (implementasi sekarang: Bearer anon-id, lihat §6) | Fungsi |
 |---|---|---|
-| `POST /api/analyze` | Bearer JWT (nanti) | Upload foto → panggil model AI → `draft` kalau relevan |
-| `POST /api/reports` | JWT pemilik draft | Publish draft → `active`, idempoten per `draft_id` |
+| `POST /api/analyze` | Bearer anon-id | Upload foto → panggil model AI → `draft` kalau relevan |
+| `POST /api/reports` | Bearer anon-id pemilik draft | Publish draft → `active`, idempoten per `draft_id` |
 | `GET /api/reports` | Tidak wajib | Proyeksi publik laporan aktif (dipakai marker+heatmap+daftar) |
-| `GET /api/reports/{id}` | Opsional/JWT pemilik | Detail laporan; pemilik bisa lihat status tersembunyi sendiri |
-| `POST /api/nearby` | Bearer JWT (nanti) | Hitung `in_red` dari lokasi user (tidak disimpan) |
-| `GET /api/my-reports` | Bearer JWT (nanti) | Semua laporan milik pengguna termasuk yang disembunyikan |
-| `POST /api/reports/{id}/false-vote` | Bearer JWT (nanti) | Satu suara sanggah per pengguna, hitung ulang atomik |
-| `POST /api/reports/{id}/help-vote` | Bearer JWT (nanti) | Simpan/replace `seen`/`not_seen` |
+| `GET /api/reports/{id}` | Opsional / Bearer anon-id pemilik | Detail laporan; pemilik bisa lihat status tersembunyi sendiri |
+| `POST /api/nearby` | Bearer anon-id | Hitung `in_red` dari lokasi user (tidak disimpan) |
+| `GET /api/my-reports` | Bearer anon-id | Semua laporan milik pengguna termasuk yang disembunyikan |
+| `POST /api/reports/{id}/false-vote` | Bearer anon-id | Satu suara sanggah per pengguna, hitung ulang atomik |
+| `POST /api/reports/{id}/help-vote` | Bearer anon-id | Simpan/replace `seen`/`not_seen` |
 
-Aturan bersama: validasi berkas/enum/panjang di server (jangan percaya client), `author_id`/`voter_id` selalu dari JWT terverifikasi (bukan dari body), `GET /api/reports` tidak boleh bocorkan `photo_path`/`author_id`/koordinat asli, waktu 24 jam pakai jam server.
+Aturan bersama: validasi berkas/enum/panjang di server (jangan percaya client), `author_id`/`voter_id` selalu dari header `Authorization` (bukan dari body) — **tapi ingat ini id anonim TANPA verifikasi kriptografis** (§6), jadi bukan jaminan identitas asli, cuma konsistensi per browser. `GET /api/reports` tidak boleh bocorkan `photo_path`/`author_id`/koordinat asli, waktu 24 jam pakai jam server.
 
 ## 11. Model data (dari PRD asli §18.1 — tidak berubah bentuknya)
 
@@ -225,3 +254,48 @@ Semua risiko PRD asli tetap berlaku (AI salah identifikasi, sanggahan palsu, are
 ## 16. Referensi
 
 Lihat PRD asli `PRD_GEMA_MVP.md` §24 untuk daftar referensi teknis lengkap (Next.js, Supabase, Leaflet, WCAG, dll). Tambahan buat v2.2: dokumentasi deploy [Vercel](https://vercel.com/docs) untuk frontend Next.js, dan platform backend Python pilihan tim (Render/Railway/Fly — pilih salah satu saat Checkpoint 9).
+
+## 17. Tampilan (UI/UX) — dokumentasi dari yang SUDAH dibangun
+
+Bagian ini menulis ulang tampilan yang sudah ada di kode jadi satu referensi, bukan proposal baru. Kalau mau ubah tampilan, ubah dulu di sini baru di kode (atau sebaliknya, tapi jaga keduanya tetap sinkron) — supaya tidak ada lagi elemen UI yang "tiba-tiba muncul" tanpa tercatat.
+
+### 17.1 Prinsip visual
+Produk ini alat keselamatan, bukan situs pemasaran: legibilitas dan kecepatan baca di HP murah lebih penting daripada dekorasi. Kosakata status (TERKENDALI/WASPADA/BAHAYA/KRITIS) sengaja meniru istilah siaga resmi Indonesia (gaya BMKG/BNPB), bukan label generik. Semua berlaku untuk alur **warga** (mobile-only, §4.0); dashboard **Pemerintah** sengaja dikecualikan — itu tabel data biasa buat demo baca-baca, bukan produk mobile.
+
+### 17.2 Design tokens
+
+| Token | Nilai | Dipakai untuk |
+|---|---|---|
+| Brand / hijau | `#0D5D3A` | Header, tombol utama, link, badge keparahan `rendah` (TERKENDALI) |
+| Latar / kertas | `#F7F6E4` | Latar seluruh app (`globals.css`, satu warna konsisten di semua layar warga) |
+| Bahaya / merah | `#CF0003` | CTA utama "Laporkan Bencana", badge keparahan `tinggi` (BAHAYA) |
+| Peringatan / kuning | `#FFBB00` | Badge keparahan `sedang` (WASPADA) |
+| Kritis / hitam | `#242424` | Badge keparahan `kritis` (KRITIS) |
+| Teks | skala `slate-900/700/600` Tailwind | Hierarki teks di atas latar kertas |
+
+Semua token warna severity+jenis bencana didefinisikan **satu tempat**: `frontend/src/lib/demo-reports.ts` (`severityMap`, `disasterBadge`). Komponen lain wajib import dari sana, jangan hardcode hex baru.
+
+**Tipografi:** satu keluarga font, **Plus Jakarta Sans** (`next/font/google`, variable `--font-jakarta`), dipakai untuk semua teks (display maupun body) — dipilih karena buatan kolektif Indonesia (Jakarta Smart City) dan sangat terbaca di layar kecil, bukan default Geist/Inter. Angka yang bisa berubah lebar digit (koordinat lat/lon) pakai utility `tabular-nums` supaya layout tidak "loncat".
+
+**Ikon:** hanya `lucide-react` — jangan tambah icon set lain atau bikin SVG custom kalau ikonnya sudah tersedia di sana.
+
+**Bentuk & target sentuh:** kartu konten `rounded-lg border shadow-sm` (komponen `ui/Card.tsx`); badge/chip status `rounded-full`; semua elemen interaktif minimal `44×44px` (kelas `min-h-11`/`min-w-11`) sesuai §12 aksesibilitas.
+
+### 17.3 Layar per halaman (alur warga)
+
+| Halaman | Isi utama |
+|---|---|
+| `/` (Beranda Warga) | Hero peta full-bleed (header hijau + logo GEMA, search area, overlay lat/lon, tombol zoom +/−, tombol hotline, CTA merah mengambang "Laporkan Bencana"). Di bawah peta (scroll): nav aksi (Buat laporan/Lacak tanggapan/Hotline), kartu "Area perhatian" (§9.2) kalau ada laporan dekat, kartu legenda 4 tingkat keparahan, daftar laporan aktif sebagai baris (ikon jenis + badge keparahan + lokasi + chevron) yang diklik → `/report/{id}`. |
+| Drawer menu (hamburger) | `NavDrawer`: link Peta Sebaran Bencana / Lacak Respons / Hotline + footer kredit tim. |
+| `/report/new` | Dua langkah state machine: **capture** (layar hijau penuh, tombol shutter bulat, pratinjau foto, tombol "Pilih foto") → **review "Hasil Identifikasi"** (badge jenis bencana berwarna + ikon, lokasi & waktu, tips keselamatan, ringkasan AI, `LocationPicker` + mini-peta, field spesifik per jenis bencana dengan pilihan radio termasuk "Tidak tahu", textarea deskripsi, tombol "Unggah"). |
+| `/report/{id}` | Badge jenis bencana + badge keparahan (+ badge DEMO kalau relevan), judul, ringkasan AI & keterangan warga, baris info berikon (lokasi/waktu/detail teknis per jenis), kartu "Kabar bantuan" yang warnanya berubah sesuai `help_status` (netral/kuning/hijau). |
+| `/track` | Daftar laporan milik anon-id sendiri (termasuk yang `disputed_hidden`). |
+| `/hotline`, `/evakuasi` | Halaman statis teks (nomor darurat, panduan evakuasi). |
+| Dashboard Pemerintah (toggle role) | **Layout berbeda total** dari alur warga — `DashboardLayout` desktop-style: kartu statistik + tabel semua laporan (scroll horizontal). Bukan mobile-first, karena murni demo baca-baca (§3, §4.0). |
+
+### 17.4 Komponen & aturan reuse
+
+- `severityMap` / `disasterBadge` (`lib/demo-reports.ts`) — satu-satunya sumber warna+label severity/jenis bencana. Dipakai di legenda, daftar laporan, badge detail, popup peta.
+- `ui/Card.tsx` — kartu generik, dipakai di semua kartu konten kecuali baris daftar laporan (yang sengaja dibuat lebih ramping, gaya baris-klik bukan kartu).
+- `RoleSwitcher` — fixed `bottom-4 left-4 z-50` di semua halaman (lewat `layout.tsx`). **Aturan wajib:** elemen baru di dekat pojok kiri-bawah (CTA, tombol submit, dst.) harus dikasih clearance (`pb-20`/`bottom-20` atau lebih) supaya tidak ketutupan chip ini — ini sudah kejadian berulang kali selama development.
+- `ReportMap` / `ReportMapCanvas` — satu komponen peta dipakai ulang untuk mode heatmap+marker (beranda) maupun mode pilih-titik-saja (`pickerOnly`, dipakai di form laporan).

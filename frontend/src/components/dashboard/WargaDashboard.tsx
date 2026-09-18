@@ -2,15 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Menu, MessageCircleQuestion, Plus, Search, SquareMinus, SquarePlus } from "lucide-react";
+import { MessageCircleQuestion, Plus, Search, SquareMinus, SquarePlus, X } from "lucide-react";
+import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
-import { LocationPicker } from "@/components/LocationPicker";
 import { NavDrawer } from "@/components/NavDrawer";
 import { ReportList } from "@/components/ReportList";
 import { ReportMap } from "@/components/ReportMap";
 import { ZoneCards } from "@/components/ZoneCards";
-import { severityMap, type MapLocation } from "@/lib/demo-reports";
+import { severityMap, severityOrder, type MapLocation } from "@/lib/demo-reports";
 import { useDemoReports } from "@/lib/demo-report-context";
 import { apiFetch } from "@/lib/api-client";
 import type { Report } from "@/types/report";
@@ -35,9 +34,19 @@ export function WargaDashboard({
   const activeReports = reports.filter((report) => report.status === "active");
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMessage, setSearchMessage] = useState("");
   const mapRef = useRef<ReportMapHandle>(null);
+
+  useEffect(() => {
+    if (!legendOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setLegendOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [legendOpen]);
 
   function runSearch() {
     const query = searchQuery.trim().toLowerCase();
@@ -86,19 +95,9 @@ export function WargaDashboard({
     <div>
       {/* Layar peta penuh, meniru wireframe Figma (node 223-8874). */}
       <div className="relative h-dvh w-full overflow-hidden bg-[#71AAF9]">
-        <header className="relative z-20 flex h-[95px] items-center justify-between bg-[#0D5D3A] px-4">
-          <Image src="/gema.svg" alt="GEMA" width={79} height={36} priority />
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Buka menu"
-            aria-haspopup="true"
-            aria-expanded={drawerOpen}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-white hover:bg-white/10"
-          >
-            <Menu aria-hidden="true" size={24} />
-          </button>
-        </header>
+        <div className="relative z-20">
+          <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
+        </div>
 
         {/* z-0 (bukan z-auto) SENGAJA dipasang di sini -- ini "mengurung" z-index internal
             Leaflet (panes/kontrolnya bisa sampai 1000+) dalam stacking context-nya sendiri,
@@ -113,7 +112,7 @@ export function WargaDashboard({
             event.preventDefault();
             runSearch();
           }}
-          className="absolute left-4 right-4 top-[111px] z-10 flex min-h-11 items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-4 backdrop-blur-sm"
+          className="absolute left-4 right-[76px] top-[111px] z-10 flex min-h-11 items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-4 backdrop-blur-sm"
         >
           <label htmlFor="cari-area" className="sr-only">Cari area berdasarkan nama laporan</label>
           <input
@@ -129,7 +128,7 @@ export function WargaDashboard({
           </button>
         </form>
         {searchMessage && (
-          <p role="status" className="absolute left-4 right-4 top-[162px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800">
+          <p role="status" className="absolute left-4 right-[76px] top-[162px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800">
             {searchMessage}
           </p>
         )}
@@ -139,7 +138,7 @@ export function WargaDashboard({
             {locationMessage}
           </p>
         )}
-        <p className="absolute left-4 top-[170px] z-10 text-xs leading-tight text-white drop-shadow">
+        <p className="absolute left-4 top-[170px] z-10 text-xs leading-tight text-white drop-shadow tabular-nums">
           Lat: {location ? location.lat.toFixed(4) : "–"}
           <br />
           Lon: {location ? location.lng.toFixed(4) : "–"}
@@ -157,13 +156,16 @@ export function WargaDashboard({
               <SquareMinus aria-hidden="true" size={20} />
             </button>
           </div>
-          <Link
-            href="/hotline"
-            aria-label="Bantuan dan hotline"
+          <button
+            type="button"
+            onClick={() => setLegendOpen(true)}
+            aria-label="Buka info dan legenda"
+            aria-haspopup="true"
+            aria-expanded={legendOpen}
             className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[#CECECE] bg-white/50 text-slate-800 backdrop-blur-sm hover:bg-white/60"
           >
             <MessageCircleQuestion aria-hidden="true" size={20} />
-          </Link>
+          </button>
         </div>
 
         <Link
@@ -177,62 +179,93 @@ export function WargaDashboard({
 
       <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-      {/* Konten aksesibel di bawah layar peta -- daftar teks, status, dan kartu area
-          perhatian tetap harus bisa dipakai penuh tanpa peta (PRD §4/§9). */}
-      <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-6 sm:px-6">
-        <h1 className="text-2xl font-bold text-slate-950">GEMA — Beranda Warga</h1>
-        <p className="text-slate-700">Laporan warga di sekitar Bandung. Informasi ini belum diverifikasi dan bukan peringatan resmi.</p>
+      {/* Info & legenda -- disembunyikan sampai ikon "?" di peta ditekan, supaya
+          tampilan awal murni full-map (permintaan tim). Tetap dialog aksesibel
+          penuh (bukan cuma disembunyikan pakai CSS) sebagai alternatif teks dari
+          peta saat dibuka (PRD §4/§9/§12). */}
+      {legendOpen && (
+        <button
+          type="button"
+          aria-label="Tutup info dan legenda"
+          onClick={() => setLegendOpen(false)}
+          className="fixed inset-0 z-40 bg-black/40"
+        />
+      )}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Info dan legenda"
+        aria-hidden={!legendOpen}
+        className={`fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-[#F7F6E4] shadow-xl transition-transform duration-200 ${
+          legendOpen ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
+        <div className="sticky top-0 flex justify-end bg-[#F7F6E4] p-2">
+          <button
+            type="button"
+            onClick={() => setLegendOpen(false)}
+            aria-label="Tutup"
+            tabIndex={legendOpen ? 0 : -1}
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-700 hover:bg-black/5"
+          >
+            <X aria-hidden="true" size={22} />
+          </button>
+        </div>
 
-        <nav aria-label="Aksi utama" className="flex flex-wrap gap-3">
-          <Link href="/report/new" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 font-semibold text-white hover:bg-blue-800">
-            Buat laporan
-          </Link>
-          <Link href="/track" className="inline-flex min-h-11 items-center rounded-lg border border-slate-400 px-4 font-semibold text-slate-900 hover:bg-slate-100">
-            Lacak tanggapan
-          </Link>
-          <Link href="/hotline" className="inline-flex min-h-11 items-center rounded-lg border border-slate-400 px-4 font-semibold text-slate-900 hover:bg-slate-100">
-            Hotline
-          </Link>
-        </nav>
+        <div className="space-y-5 px-4 pb-8">
+          <h1 className="text-2xl font-bold text-slate-950">GEMA — Beranda Warga</h1>
+          <p className="text-slate-700">Laporan warga di sekitar Bandung. Informasi ini belum diverifikasi dan bukan peringatan resmi.</p>
 
-        <Card>
-          <LocationPicker location={location} onChange={onLocationChange} message={locationMessage} />
-        </Card>
+          <nav aria-label="Aksi utama" className="flex flex-wrap gap-3">
+            <Link href="/report/new" tabIndex={legendOpen ? 0 : -1} className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 font-semibold text-white hover:bg-blue-800">
+              Buat laporan
+            </Link>
+            <Link href="/track" tabIndex={legendOpen ? 0 : -1} className="inline-flex min-h-11 items-center rounded-lg border border-slate-400 px-4 font-semibold text-slate-900 hover:bg-slate-100">
+              Lacak tanggapan
+            </Link>
+            <Link href="/hotline" tabIndex={legendOpen ? 0 : -1} className="inline-flex min-h-11 items-center rounded-lg border border-slate-400 px-4 font-semibold text-slate-900 hover:bg-slate-100">
+              Hotline
+            </Link>
+          </nav>
 
-        {loading && <p role="status" className="text-slate-700">Memuat laporan…</p>}
-        {error && (
-          <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-900">
-            Gagal memuat laporan dari server: {error}
-          </p>
-        )}
+          {loading && <p role="status" className="text-slate-700">Memuat laporan…</p>}
+          {error && (
+            <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-900">
+              Gagal memuat laporan dari server: {error}
+            </p>
+          )}
 
-        {location && !nearest && (location.accuracy_m == null || location.accuracy_m <= 100) && (
-          <p role="status" className="rounded-lg border border-slate-300 bg-slate-50 p-4 text-slate-800">
-            Tidak ada laporan aktif dalam radius perhatian yang dikonfigurasi dari titik pilihan saat ini.
-            Kondisi di lapangan tetap perlu diperiksa dari sumber resmi.
-          </p>
-        )}
-        <ZoneCards nearest={nearest} />
+          {location && !nearest && (location.accuracy_m == null || location.accuracy_m <= 100) && (
+            <p role="status" className="rounded-lg border border-slate-300 bg-slate-50 p-4 text-slate-800">
+              Tidak ada laporan aktif dalam radius perhatian yang dikonfigurasi dari titik pilihan saat ini.
+              Kondisi di lapangan tetap perlu diperiksa dari sumber resmi.
+            </p>
+          )}
+          <ZoneCards nearest={nearest} />
 
-        <section aria-label="Legenda tingkat keparahan">
-          <ul className="flex flex-wrap gap-3 text-sm text-slate-800">
-            {(["rendah", "sedang", "tinggi", "kritis"] as const).map((severity) => (
-              <li key={severity} className="flex items-center gap-2">
-                <span aria-hidden="true" className="inline-block h-4 w-4 rounded-full border border-slate-400"
-                  style={{ backgroundColor: severityMap[severity].color }} />
-                <span>{severityMap[severity].label}</span>
-                <span>({severityMap[severity].radiusLabel || "tanpa peringatan"})</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+          <section aria-label="Legenda tingkat keparahan">
+            <Card className="border-slate-200">
+              <h2 className="mb-3 font-bold text-slate-900">Tingkat keparahan</h2>
+              <ul className="flex flex-wrap gap-2">
+                {severityOrder.map((severity) => (
+                  <li key={severity} className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm">
+                    <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: severityMap[severity].color }} />
+                    <span className="font-semibold text-slate-900">{severityMap[severity].label}</span>
+                    <span className="text-slate-600">{severityMap[severity].radiusLabel || "tanpa peringatan"}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </section>
 
-        <section aria-labelledby="list-heading">
-          <h2 id="list-heading" className="mb-3 text-xl font-bold text-slate-900">
-            Daftar laporan aktif ({activeReports.length})
-          </h2>
-          <ReportList reports={activeReports} />
-        </section>
+          <section aria-labelledby="list-heading">
+            <h2 id="list-heading" className="mb-3 text-xl font-bold text-slate-900">
+              Daftar laporan aktif ({activeReports.length})
+            </h2>
+            <ReportList reports={activeReports} />
+          </section>
+        </div>
       </div>
     </div>
   );
