@@ -11,9 +11,9 @@ from pydantic import BaseModel
 
 from app.core.config import settings
 
-# PRD merekomendasikan gemini-2.5-flash, tapi model itu sudah ditutup untuk akun baru
-# (API menyarankan penggantinya). Ganti di sini kalau tim pindah provider.
-MODEL_NAME = "gemini-3.6-flash"
+# Gemini 2.5 ditolak untuk key ini; 3.6/3.8 sedang 503 saat diuji.
+# Gemini 3.5 Flash berhasil dengan skema keluaran yang sama.
+MODEL_NAME = "gemini-3.5-flash"
 TIMEOUT_MS = 30_000  # PRD §5: putuskan sekitar 30 detik dengan galat yang jelas.
 
 

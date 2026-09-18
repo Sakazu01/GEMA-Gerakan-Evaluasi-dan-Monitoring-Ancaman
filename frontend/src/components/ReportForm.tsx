@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
-import { ChevronLeft, Menu } from "lucide-react";
+import { Camera, ChevronLeft, Menu } from "lucide-react";
 import { LocationPicker } from "@/components/LocationPicker";
+import { ReportMap } from "@/components/ReportMap";
 import { disasterBadge, type MapLocation } from "@/lib/demo-reports";
 import { apiFetch } from "@/lib/api-client";
+import { requestDeviceLocation } from "@/lib/geolocation";
 import type { AnalyzeResponse, FireDetails, FloodDetails, ReportDetails } from "@/types/report";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
@@ -36,6 +38,7 @@ export function ReportForm() {
   const [error, setError] = useState("");
   const [location, setLocation] = useState<MapLocation | null>(null);
   const [locationLabel, setLocationLabel] = useState("");
+  const [locationMessage, setLocationMessage] = useState("Mencari lokasi perangkat...");
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
   const [analyzedAt, setAnalyzedAt] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -46,26 +49,54 @@ export function ReportForm() {
   const [current, setCurrent] = useState<FloodDetails["current"]>(null);
   const [coveredArea, setCoveredArea] = useState<number | null>(null);
   const [visibility, setVisibility] = useState<FireDetails["visibility"]>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pickedManually = useRef(false);
+  const requestedLocation = useRef(false);
+
+  useEffect(() => () => {
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+  }, [photoUrl]);
+
+  useEffect(() => {
+    if (requestedLocation.current) return;
+    requestedLocation.current = true;
+    requestDeviceLocation(
+      (next) => {
+        if (pickedManually.current) return;
+        setLocation(next);
+        setLocationLabel(next.label);
+      },
+      (message) => { if (!pickedManually.current) setLocationMessage(message); },
+    );
+  }, []);
+
+  function chooseLocation(next: MapLocation) {
+    pickedManually.current = true;
+    setLocation(next);
+    setLocationLabel(next.label);
+    setLocationMessage("");
+  }
 
   function choosePhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
     setFileError("");
     setError("");
     if (!file) return;
+    setPhoto(null);
+    setPhotoUrl(null);
+    setAnalysis(null);
     if (!ALLOWED_TYPES.has(file.type)) {
       setFileError("Pilih foto JPEG, PNG, atau WebP.");
-      event.target.value = "";
       return;
     }
-    if (file.size > MAX_PHOTO_BYTES) {
-      setFileError("Ukuran foto maksimal 3 MB.");
-      event.target.value = "";
+    if (file.size === 0 || file.size > MAX_PHOTO_BYTES) {
+      setFileError("Ukuran foto maksimal 3 MB dan tidak boleh kosong.");
       return;
     }
     setPhoto(file);
     setPhotoUrl(URL.createObjectURL(file));
-    setAnalysis(null);
   }
 
   async function analyzePhoto() {
@@ -84,13 +115,13 @@ export function ReportForm() {
         setAnalyzedAt(new Date().toISOString());
         setStep("review");
       } else {
-        setError(result.validity === "invalid"
-          ? "Gambar tidak valid. Unggah foto kejadian yang jelas."
-          : "Foto belum cukup jelas untuk dianalisis. Coba foto lain.");
+        setError(result.reason || "Foto belum cukup jelas untuk dianalisis. Coba foto lain.");
       }
       setAnalysis(result);
-    } catch {
-      setError("Analisis belum tersedia. Coba lagi nanti.");
+    } catch (cause) {
+      setError(cause instanceof Error && cause.name !== "TypeError"
+        ? cause.message
+        : "Tidak dapat menghubungi server analisis. Pastikan backend berjalan di port 8000.");
     } finally {
       setAnalyzing(false);
     }
@@ -150,7 +181,9 @@ export function ReportForm() {
     return (
       <div className="flex min-h-dvh flex-col bg-[#0D5D3A]">
         <GemaHeader />
-        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+        <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+          onChange={choosePhoto} className="hidden" />
+        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
           onChange={choosePhoto} className="hidden" />
         <div className="relative flex-1">
           {photoUrl ? (
@@ -169,20 +202,26 @@ export function ReportForm() {
         </div>
         {fileError && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{fileError}</p>}
         {error && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{error}</p>}
-        <div className="flex items-center justify-between bg-[#0D5D3A] px-8 pb-20 pt-6">
+        <div className="flex items-center justify-between gap-3 bg-[#0D5D3A] px-6 pt-6">
           <Link href="/" aria-label="Kembali ke beranda" className="flex min-h-11 min-w-11 items-center justify-center text-white">
             <ChevronLeft aria-hidden="true" size={28} />
           </Link>
-          <button
-            type="button"
-            disabled={analyzing}
-            aria-label={photo ? "Analisis foto" : "Ambil atau pilih foto"}
-            onClick={() => (photo ? analyzePhoto() : fileInputRef.current?.click())}
-            className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/60 bg-white disabled:bg-slate-300"
-          >
-            {analyzing && <span className="h-6 w-6 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />}
+          <button type="button" disabled={analyzing} aria-label="Ambil foto"
+            onClick={() => cameraInputRef.current?.click()}
+            className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/60 bg-white disabled:bg-slate-300">
+            <Camera aria-hidden="true" className="text-[#0D5D3A]" size={26} />
           </button>
-          <span className="min-w-11" />
+          <button type="button" disabled={analyzing} onClick={() => fileInputRef.current?.click()}
+            className="min-h-11 rounded-lg border border-white px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">
+            Pilih foto
+          </button>
+        </div>
+        <div className="bg-[#0D5D3A] px-6 pb-12 pt-4 text-center">
+          <p className="text-sm text-white/80">JPEG, PNG, atau WebP. Maksimal 3 MB.</p>
+          {photo && <button type="button" disabled={analyzing} onClick={analyzePhoto}
+            className="mt-3 min-h-11 w-full rounded-lg bg-white px-4 py-2 font-semibold text-[#0D5D3A] disabled:opacity-60">
+            {analyzing ? "Menganalisis foto..." : "Analisis foto"}
+          </button>}
         </div>
       </div>
     );
@@ -216,7 +255,10 @@ export function ReportForm() {
         )}
 
         <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <LocationPicker location={location} onChange={(next) => { setLocation(next); setLocationLabel(next.label); }} forReport />
+          <LocationPicker location={location} onChange={chooseLocation} forReport message={locationMessage} />
+          <div className="mt-3">
+            <ReportMap reports={[]} location={location} onPickLocation={chooseLocation} pickerOnly />
+          </div>
         </div>
 
         {relevant?.type === "flood" && (

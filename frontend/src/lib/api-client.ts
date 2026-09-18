@@ -9,7 +9,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.detail ?? `API ${path} gagal: ${res.status}`);
+    throw new Error(typeof body?.detail === "string" ? body.detail : `Layanan sedang bermasalah (${res.status}).`);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;

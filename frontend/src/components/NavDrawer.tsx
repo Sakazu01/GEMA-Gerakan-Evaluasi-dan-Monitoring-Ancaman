@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 
 const items = [
   { href: "/", label: "Peta Sebaran Bencana" },
+  { href: "/evakuasi", label: "Panduan Evakuasi" },
   { href: "/track", label: "Lacak Respons" },
   { href: "/hotline", label: "Hotline" },
 ];
