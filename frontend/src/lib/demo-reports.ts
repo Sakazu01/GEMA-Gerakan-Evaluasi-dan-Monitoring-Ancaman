@@ -112,6 +112,39 @@ export const demoNow = Date.now();
 
 export type MapLocation = { lat: number; lng: number; label: string; source?: LocationSource; accuracy_m?: number };
 
+// Titik kumpul CONTOH (bukan data resmi BPBD/pemda setempat) -- dipakai /evakuasi supaya
+// panduan bisa menunjuk titik terdekat dari laporan yang dipilih, alih-alih placeholder
+// kosong. Satu titik per klaster kota yang dipakai seed_demo.py agar selalu ada yang dekat.
+export const titikKumpul: { name: string; city: string; lat: number; lng: number }[] = [
+  { name: "Lapangan Gasibu", city: "Bandung", lat: -6.9018, lng: 107.6182 },
+  { name: "GOR Hasanuddin", city: "Banjarmasin", lat: -3.3200, lng: 114.5900 },
+  { name: "Lapangan Sanaman Mantikei", city: "Palangka Raya", lat: -2.2100, lng: 113.9200 },
+  { name: "Alun-alun Kota Sampit", city: "Sampit", lat: -2.5350, lng: 112.9450 },
+  { name: "Alun-alun Kapuas", city: "Pontianak", lat: -0.0280, lng: 109.3350 },
+  { name: "Lapangan Blang Padang", city: "Banda Aceh", lat: 5.5500, lng: 95.3200 },
+  { name: "Alun-alun Kota Lhokseumawe", city: "Lhokseumawe", lat: 5.1800, lng: 97.1500 },
+  { name: "GOR H. Agus Salim", city: "Padang", lat: -0.9450, lng: 100.4150 },
+  { name: "Lapangan Karebosi", city: "Makassar", lat: -5.1400, lng: 119.4100 },
+  { name: "Stadion Maguwoharjo", city: "Sleman", lat: -7.7380, lng: 110.4210 },
+  { name: "GOR Cenderawasih", city: "Jayapura", lat: -2.5330, lng: 140.7050 },
+];
+
+function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function nearestTitikKumpul(lat: number, lng: number) {
+  return titikKumpul
+    .map((point) => ({ point, distance_m: haversineM(lat, lng, point.lat, point.lng) }))
+    .sort((a, b) => a.distance_m - b.distance_m)[0];
+}
+
 export function isWarningZoneReport(report: Report, now = Date.now()) {
   if (report.status !== "active" || !severityMap[report.severity].warningRadiusM || !report.published_at) {
     return false;

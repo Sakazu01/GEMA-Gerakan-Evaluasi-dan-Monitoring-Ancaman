@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ChevronLeft, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, MapPin, XCircle } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { NavDrawer } from "@/components/NavDrawer";
-import { disasterGuides, disasterNames } from "@/lib/demo-reports";
+import { Card } from "@/components/ui/Card";
+import { disasterGuides, disasterNames, nearestTitikKumpul } from "@/lib/demo-reports";
+import { useDemoReports } from "@/lib/demo-report-context";
 import type { DisasterType } from "@/types/report";
 
 const types: DisasterType[] = ["flood", "landslide", "fire"];
@@ -13,6 +15,17 @@ const types: DisasterType[] = ["flood", "landslide", "fire"];
 export default function EvakuasiPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selected, setSelected] = useState<DisasterType>("fire");
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const { reports } = useDemoReports();
+
+  // Beberapa laporan demo sengaja dibuat di titik yang nyaris sama untuk uji kepadatan peta
+  // (lihat seed_demo.py _konfirmasi_tambahan) -- di-dedupe di sini biar tidak terlihat
+  // dobel-dobel di daftar pilihan laporan.
+  const candidates = reports
+    .filter((report) => report.type === selected && report.status === "active")
+    .filter((report, index, all) => all.findIndex((r) => r.location_label === report.location_label) === index);
+  const selectedReport = candidates.find((report) => report.id === selectedReportId) ?? candidates[0] ?? null;
+  const nearest = selectedReport ? nearestTitikKumpul(selectedReport.public_lat, selectedReport.public_lng) : null;
 
   return (
     <div className="min-h-dvh">
@@ -23,10 +36,39 @@ export default function EvakuasiPage() {
           <ChevronLeft aria-hidden="true" size={22} /> Panduan Evakuasi
         </Link>
 
-        <div className="mt-3 flex min-h-[140px] flex-col items-center justify-center rounded-lg border border-slate-200 bg-white px-5 text-center">
-          <p className="font-semibold text-slate-900">Titik kumpul dan rute belum tersedia di GEMA</p>
-          <p className="mt-1 text-sm text-slate-600">Ikuti petunjuk petugas setempat untuk menemukan tempat yang aman.</p>
-        </div>
+        <Card className="mt-3 border-slate-200">
+          {!selectedReport || !nearest ? (
+            <div className="flex min-h-[100px] flex-col items-center justify-center text-center">
+              <p className="font-semibold text-slate-900">Titik kumpul dan rute belum tersedia di GEMA</p>
+              <p className="mt-1 text-sm text-slate-600">Ikuti petunjuk petugas setempat untuk menemukan tempat yang aman.</p>
+            </div>
+          ) : (
+            <div>
+              <label htmlFor="pilih-laporan" className="text-sm font-semibold text-slate-900">
+                Titik kumpul terdekat dari laporan {disasterNames[selected].toLowerCase()}
+              </label>
+              <select
+                id="pilih-laporan"
+                value={selectedReport.id}
+                onChange={(event) => setSelectedReportId(event.target.value)}
+                className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900"
+              >
+                {candidates.map((report) => (
+                  <option key={report.id} value={report.id}>{report.location_label}</option>
+                ))}
+              </select>
+              <div className="mt-3 flex items-start gap-2">
+                <MapPin aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-[#0D5D3A]" />
+                <p className="text-sm text-slate-800">
+                  <span className="font-semibold">{nearest.point.name}</span>, {nearest.point.city}
+                  <br />
+                  <span className="text-slate-600">sekitar {(nearest.distance_m / 1000).toFixed(1)} km dari lokasi laporan</span>
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">*Titik kumpul contoh untuk demo, bukan data resmi BPBD/pemda setempat.</p>
+            </div>
+          )}
+        </Card>
 
         <section aria-labelledby="jenis-panduan" className="mt-4">
           <h2 id="jenis-panduan" className="text-sm font-semibold text-slate-900">Pilih jenis bencana</h2>
@@ -82,9 +124,11 @@ export default function EvakuasiPage() {
             Di Titik Kumpul
           </a>
         </div>
-        <section id="di-titik-kumpul" aria-labelledby="judul-titik-kumpul" className="mt-5 rounded-lg border border-slate-200 bg-white p-4">
-          <h2 id="judul-titik-kumpul" className="font-semibold text-slate-900">Saat tiba di titik kumpul</h2>
-          <p className="mt-1 text-sm text-slate-700">Laporkan kehadiran Anda kepada petugas posko dan ikuti informasi resmi. GEMA tidak mencatat kehadiran atau mengirim permintaan bantuan.</p>
+        <section id="di-titik-kumpul" aria-labelledby="judul-titik-kumpul" className="mt-5">
+          <Card className="border-slate-200">
+            <h2 id="judul-titik-kumpul" className="font-semibold text-slate-900">Saat tiba di titik kumpul</h2>
+            <p className="mt-1 text-sm text-slate-700">Laporkan kehadiran Anda kepada petugas posko dan ikuti informasi resmi. GEMA tidak mencatat kehadiran atau mengirim permintaan bantuan.</p>
+          </Card>
         </section>
         <p className="mt-4 text-xs text-slate-600">
           Panduan umum mengacu pada{" "}

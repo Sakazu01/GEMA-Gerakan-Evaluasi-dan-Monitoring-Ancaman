@@ -38,9 +38,12 @@ def list_report_density():
 # Harus didaftarkan SEBELUM /reports/{report_id} -- kalau tidak, "all" bakal dicoba
 # di-parse sebagai UUID oleh route di bawahnya dan gagal 422.
 @router.get("/reports/all", response_model=list[ReportOut])
-def list_all_reports():
+def list_all_reports(user_id: str = Depends(require_user)):
     """Dashboard Pemerintah (PRD §3): semua laporan yang sudah terbit, termasuk
-    disputed_hidden -- bukan cuma yang aktif seperti GET /reports biasa."""
+    disputed_hidden -- bukan cuma yang aktif seperti GET /reports biasa.
+    Butuh Bearer seperti endpoint lain -- sebelumnya endpoint ini kebuka tanpa
+    token sama sekali, jadi laporan yang sudah disembunyikan karena disanggah
+    warga bisa dibaca siapa pun (ditemukan review keamanan)."""
     return reports_service.list_all_for_monitoring()
 
 

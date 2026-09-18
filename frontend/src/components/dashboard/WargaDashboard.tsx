@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { MessageCircleQuestion, Plus, Search, SquareMinus, SquarePlus, X } from "lucide-react";
+import { AlertTriangle, Layers, LocateFixed, MessageCircleQuestion, Plus, Search, SquareMinus, SquarePlus, X } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { NavDrawer } from "@/components/NavDrawer";
@@ -12,6 +12,7 @@ import { ZoneCards } from "@/components/ZoneCards";
 import { severityMap, severityOrder, type MapLocation } from "@/lib/demo-reports";
 import { useDemoReports } from "@/lib/demo-report-context";
 import { apiFetch } from "@/lib/api-client";
+import { requestDeviceLocation } from "@/lib/geolocation";
 import type { Report } from "@/types/report";
 import type { DensityPoint, MapMode, ReportMapHandle } from "@/components/ReportMapCanvas";
 
@@ -37,6 +38,7 @@ export function WargaDashboard({
   const [mapMode, setMapMode] = useState<MapMode>("ai");
   const [densityPoints, setDensityPoints] = useState<DensityPoint[] | null>(null);
   const [densityError, setDensityError] = useState("");
+  const [densityLegendOpen, setDensityLegendOpen] = useState(true);
   const [legendOpen, setLegendOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMessage, setSearchMessage] = useState("");
@@ -59,6 +61,16 @@ export function WargaDashboard({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [legendOpen]);
+
+  function locateMe() {
+    requestDeviceLocation(
+      (next) => {
+        onLocationChange(next);
+        mapRef.current?.flyTo(next.lat, next.lng);
+      },
+      (message) => setSearchMessage(message),
+    );
+  }
 
   function runSearch() {
     const query = searchQuery.trim().toLowerCase();
@@ -108,68 +120,84 @@ export function WargaDashboard({
       {/* Layar peta penuh, meniru wireframe Figma (node 223-8874). */}
       <div className="relative h-dvh w-full overflow-hidden bg-[#71AAF9]">
         <div className="relative z-20">
-          <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
+          <AppHeader
+            open={drawerOpen}
+            onMenuClick={() => setDrawerOpen(true)}
+            center={
+              <form
+                role="search"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  runSearch();
+                }}
+                className="flex h-11 items-center gap-2 rounded-full bg-white pl-4 pr-1"
+              >
+                <label htmlFor="cari-area" className="sr-only">Cari area berdasarkan nama laporan</label>
+                <Search aria-hidden="true" size={18} className="shrink-0 text-slate-500" />
+                <input
+                  id="cari-area"
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Cari area, alamat, atau kata kunci..."
+                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 placeholder:text-slate-500 focus:outline-none"
+                />
+                <span aria-hidden="true" className="h-5 w-px shrink-0 bg-slate-300" />
+                <button type="button" onClick={locateMe} aria-label="Gunakan lokasi perangkat saya"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center text-slate-500 hover:text-slate-700">
+                  <LocateFixed aria-hidden="true" size={18} />
+                </button>
+              </form>
+            }
+          />
         </div>
 
         {/* z-0 (bukan z-auto) SENGAJA dipasang di sini -- ini "mengurung" z-index internal
             Leaflet (panes/kontrolnya bisa sampai 1000+) dalam stacking context-nya sendiri,
-            supaya gak bocor nutupin overlay lain (search bar dll) yang z-index-nya lebih kecil. */}
-        <div className="absolute inset-0 top-[95px] z-0">
+            supaya gak bocor nutupin overlay lain (search bar dll) yang z-index-nya lebih kecil.
+            top-0 (bukan reserved offset) -- header sekarang melayang (z-20) DI ATAS peta,
+            bukan mendorong peta ke bawah, supaya peta kelihatan penuh di balik sudut header. */}
+        <div className="absolute inset-0 z-0">
           <ReportMap ref={mapRef} reports={activeReports} location={location} onPickLocation={onLocationChange} fullBleed mode={mapMode} densityPoints={densityPoints} />
         </div>
 
-        <form
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            runSearch();
-          }}
-          className="absolute left-4 right-[76px] top-[111px] z-10 flex min-h-11 items-center gap-2 rounded-xl border border-white/40 bg-white/60 px-4 backdrop-blur-sm"
-        >
-          <label htmlFor="cari-area" className="sr-only">Cari area berdasarkan nama laporan</label>
-          <input
-            id="cari-area"
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Cari area"
-            className="min-w-0 flex-1 bg-transparent text-slate-800 placeholder:text-slate-600 focus:outline-none"
-          />
-          <button type="submit" aria-label="Cari" className="flex min-h-11 min-w-11 items-center justify-center text-slate-700">
-            <Search aria-hidden="true" size={20} />
-          </button>
-        </form>
         {searchMessage && (
-          <p role="status" className="absolute left-4 right-[76px] top-[162px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800">
+          <p role="status" className="absolute left-4 right-[76px] top-[111px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800">
             {searchMessage}
           </p>
         )}
 
-        {locationMessage && (
-          <p role="status" className={mapMode === "density" ? "absolute left-4 right-16 top-[410px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800" : "absolute left-4 right-16 top-[275px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800"}>
-            {locationMessage}
-          </p>
-        )}
-        <p className="absolute left-4 top-[170px] z-10 text-xs leading-tight text-white drop-shadow tabular-nums">
+        {/* stackOffset: searchMessage duduk di top-111 juga (di atas), jadi semua yang
+            di bawahnya digeser turun kalau searchMessage sedang tampil -- kalau tidak,
+            Lat/Lon dan locationMessage numpuk tepat di belakang kotak pesan pencarian. */}
+        <p className={`absolute left-4 z-10 text-xs leading-tight text-white drop-shadow tabular-nums ${searchMessage ? "top-[203px]" : "top-[111px]"}`}>
           Lat: {location ? location.lat.toFixed(4) : "–"}
           <br />
           Lon: {location ? location.lng.toFixed(4) : "–"}
         </p>
+        {locationMessage && (
+          <p role="status" className={`absolute left-4 right-16 z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800 ${
+            mapMode === "density"
+              ? (searchMessage ? "top-[425px]" : "top-[335px]")
+              : (searchMessage ? "top-[249px]" : "top-[157px]")
+          }`}>
+            {locationMessage}
+          </p>
+        )}
 
-        <div role="group" aria-label="Tampilan peta" className="absolute left-4 right-4 top-[215px] z-10 flex gap-2 rounded-xl bg-white/95 p-1 shadow">
-          <button type="button" aria-pressed={mapMode === "ai"} onClick={() => setMapMode("ai")}
-            className={mapMode === "ai" ? "min-h-11 min-w-0 flex-1 rounded-lg bg-[#0D5D3A] px-2 text-sm font-bold text-white" : "min-h-11 min-w-0 flex-1 rounded-lg px-2 text-sm font-semibold text-slate-800"}>
-            Analisis AI
-          </button>
-          <button type="button" aria-pressed={mapMode === "density"}
-            onClick={() => { setMapMode("density"); setDensityPoints(null); setDensityError(""); }}
-            className={mapMode === "density" ? "min-h-11 min-w-0 flex-1 rounded-lg bg-[#0D5D3A] px-2 text-sm font-bold text-white" : "min-h-11 min-w-0 flex-1 rounded-lg px-2 text-sm font-semibold text-slate-800"}>
-            Kepadatan Laporan
-          </button>
-        </div>
-        {mapMode === "density" && (
-          <div className="absolute left-4 right-4 top-[274px] z-10 rounded-xl bg-white/95 px-3 py-2 text-xs text-slate-900 shadow">
-            <p className="font-semibold">Jumlah pelapor dalam radius 50 m · 24 jam terakhir</p>
+        {mapMode === "density" && densityLegendOpen && (
+          <div className={`absolute left-4 right-[76px] z-10 rounded-xl bg-white/95 px-3 py-2 text-xs text-slate-900 shadow ${searchMessage ? "top-[249px]" : "top-[157px]"}`}>
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-semibold">Jumlah pelapor dalam radius 50 m · 24 jam terakhir</p>
+              <button
+                type="button"
+                onClick={() => setDensityLegendOpen(false)}
+                aria-label="Tutup info kepadatan laporan"
+                className="-mr-1 -mt-1 flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+              >
+                <X aria-hidden="true" size={14} />
+              </button>
+            </div>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
               {[
                 { count: "0", label: "Hijau", color: severityMap.rendah.color },
@@ -189,25 +217,45 @@ export function WargaDashboard({
           </div>
         )}
 
-        <div className="absolute right-4 top-[111px] z-10 flex flex-col gap-3">
-          <div className="overflow-hidden rounded-lg border border-[#CECECE] bg-white/50 backdrop-blur-sm">
+        <div className="absolute right-4 top-[111px] z-10 flex flex-col gap-2">
+          <div className="overflow-hidden rounded-2xl bg-white shadow-md">
             <button type="button" aria-label="Perbesar peta" onClick={() => mapRef.current?.zoomIn()}
-              className="flex min-h-11 min-w-11 items-center justify-center text-slate-800 hover:bg-white/60">
+              className="flex min-h-11 min-w-11 items-center justify-center text-slate-800 hover:bg-slate-100">
               <SquarePlus aria-hidden="true" size={20} />
             </button>
-            <div className="h-px bg-[#B2B2B2]" />
+            <div className="h-px bg-slate-200" />
             <button type="button" aria-label="Perkecil peta" onClick={() => mapRef.current?.zoomOut()}
-              className="flex min-h-11 min-w-11 items-center justify-center text-slate-800 hover:bg-white/60">
+              className="flex min-h-11 min-w-11 items-center justify-center text-slate-800 hover:bg-slate-100">
               <SquareMinus aria-hidden="true" size={20} />
             </button>
           </div>
+          <button
+            type="button"
+            aria-pressed={mapMode === "density"}
+            aria-label={mapMode === "ai" ? "Tampilkan mode kepadatan laporan" : "Tampilkan mode analisis AI"}
+            onClick={() => {
+              if (mapMode === "ai") {
+                setMapMode("density");
+                setDensityPoints(null);
+                setDensityError("");
+                setDensityLegendOpen(true);
+              } else {
+                setMapMode("ai");
+              }
+            }}
+            className={`flex min-h-11 min-w-11 items-center justify-center rounded-2xl shadow-md ${
+              mapMode === "density" ? "bg-[#0D5D3A] text-white" : "bg-white text-slate-800 hover:bg-slate-100"
+            }`}
+          >
+            <Layers aria-hidden="true" size={20} />
+          </button>
           <button
             type="button"
             onClick={() => setLegendOpen(true)}
             aria-label="Buka info dan legenda"
             aria-haspopup="true"
             aria-expanded={legendOpen}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[#CECECE] bg-white/50 text-slate-800 backdrop-blur-sm hover:bg-white/60"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-2xl bg-white text-slate-800 shadow-md hover:bg-slate-100"
           >
             <MessageCircleQuestion aria-hidden="true" size={20} />
           </button>
@@ -215,8 +263,9 @@ export function WargaDashboard({
 
         <Link
           href="/report/new"
-          className="absolute bottom-20 left-1/2 z-10 flex min-h-11 -translate-x-1/2 items-center gap-2 rounded-lg bg-[#CF0003] px-6 font-semibold text-white shadow-lg hover:bg-red-800"
+          className="absolute bottom-20 left-1/2 z-10 flex min-h-11 -translate-x-1/2 items-center gap-2 rounded-full bg-[#CF0003] px-6 font-semibold text-white shadow-lg hover:bg-red-800"
         >
+          <AlertTriangle aria-hidden="true" size={18} />
           Laporkan Bencana
           <Plus aria-hidden="true" size={20} />
         </Link>
