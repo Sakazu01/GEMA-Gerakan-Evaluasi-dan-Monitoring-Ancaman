@@ -1,7 +1,5 @@
 export type DisasterType = "flood" | "landslide" | "fire";
-// 4 tingkat, tiap tingkat punya radius peringatan sendiri (PRD.md §9.2):
-// rendah=tidak pernah memicu peringatan, sedang=1km, tinggi=3km, kritis=10km.
-// "kritis" = bahaya skala luas/regional; "tinggi" tetap SEGERA tapi lebih lokal.
+// PRD v2.3 menambah kritis; backend/app/schemas/report.py perlu disinkronkan sebelum C1.
 export type Severity = "rendah" | "sedang" | "tinggi" | "kritis";
 export type ReportStatus = "draft" | "active" | "disputed_hidden";
 export type LocationSource = "device" | "map" | "demo";

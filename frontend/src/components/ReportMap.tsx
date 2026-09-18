@@ -1,11 +1,33 @@
 "use client";
 
-// TODO Checkpoint 3: Leaflet + Leaflet.heat. Load lewat dynamic import (ssr: false) karena
-// plugin memakai `window`/global Leaflet — lihat PRD §8 dan §20 (aturan batas impor).
-export function ReportMap() {
+import dynamic from "next/dynamic";
+import type { MapLocation } from "@/lib/demo-reports";
+import type { Report } from "@/types/report";
+
+const MapCanvas = dynamic(() => import("./ReportMapCanvas"), {
+  ssr: false,
+  loading: () => <div className="flex h-96 items-center justify-center rounded-lg bg-slate-100 text-slate-700">Memuat peta…</div>,
+});
+
+export function ReportMap({
+  reports,
+  location,
+  onPickLocation,
+  pickerOnly = false,
+}: {
+  reports: Report[];
+  location: MapLocation | null;
+  onPickLocation: (location: MapLocation) => void;
+  pickerOnly?: boolean;
+}) {
   return (
-    <div className="flex h-96 items-center justify-center rounded border border-dashed border-gray-300 text-gray-400">
-      Peta (belum diimplementasikan)
+    <div>
+      <MapCanvas reports={reports} location={location} onPickLocation={onPickLocation} />
+      <p className="mt-2 text-sm text-slate-600">
+        Peta memerlukan koneksi internet untuk menampilkan ubin OpenStreetMap.
+        {pickerOnly ? " Klik peta untuk memilih lokasi laporan secara manual." :
+          " Semua laporan juga tersedia di daftar teks di bawah. Klik peta untuk memilih lokasi demo secara manual."}
+      </p>
     </div>
   );
 }
