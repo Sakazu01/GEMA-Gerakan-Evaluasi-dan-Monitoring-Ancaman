@@ -4,23 +4,59 @@ import type { DisasterType, LocationSource, Report, Severity } from "@/types/rep
 // radius heatmap Leaflet dalam piksel, sehingga keduanya tidak boleh disamakan.
 export const heatmapRadiusPx = 25;
 export const heatmapBlurPx = 15;
+// Warna dan label persis sesuai desain Figma "Tool tip detail bencana"
+// (https://www.figma.com/design/GEvmpaKV6swe0PCwgyaT2Z/GEMA?node-id=223-8863).
 export const severityMap: Record<Severity, {
   color: string;
   textColor: string;
   warningRadiusM: number;
+  label: string;
+  radiusLabel: string;
+  badgeBg: string;
 }> = {
-  rendah: { color: "#166534", textColor: "#ffffff", warningRadiusM: 0 },
-  sedang: { color: "#facc15", textColor: "#111827", warningRadiusM: 1000 },
-  tinggi: { color: "#b91c1c", textColor: "#ffffff", warningRadiusM: 3000 },
-  kritis: { color: "#111111", textColor: "#ffffff", warningRadiusM: 10000 },
+  rendah: { color: "#0D5D3A", textColor: "#FAFAFA", warningRadiusM: 0, label: "TERKENDALI", radiusLabel: "", badgeBg: "rgba(13, 93, 58, 0.22)" },
+  sedang: { color: "#FFBB00", textColor: "#000000", warningRadiusM: 1000, label: "WASPADA", radiusLabel: "radius ±1 km", badgeBg: "#F0F0F0" },
+  tinggi: { color: "#CF0003", textColor: "#FAFAFA", warningRadiusM: 3000, label: "BAHAYA", radiusLabel: "radius 3-5 km", badgeBg: "#FFD1D1" },
+  kritis: { color: "#242424", textColor: "#FAFAFA", warningRadiusM: 10000, label: "KRITIS", radiusLabel: "radius >10 km", badgeBg: "#242424" },
 };
 
 export const severityOrder = ["rendah", "sedang", "tinggi", "kritis"] as const satisfies readonly Severity[];
+
+// "TERKENDALI" saja (tanpa radius); yang lain "WASPADA (radius ±1 km)" dst.
+export function severityStatusLabel(severity: Severity): string {
+  const { label, radiusLabel } = severityMap[severity];
+  return radiusLabel ? `${label} (${radiusLabel})` : label;
+}
 
 export const disasterNames: Record<DisasterType, string> = {
   flood: "Banjir",
   landslide: "Tanah longsor",
   fire: "Kebakaran",
+};
+
+// Sesuai badge jenis bencana di Figma; ikon dari public/disaster_icon (di-merge Track B).
+export const disasterBadge: Record<DisasterType, { label: string; bg: string; icon: string }> = {
+  flood: { label: "BANJIR", bg: "#1C64CF", icon: "/disaster_icon/flood.png" },
+  landslide: { label: "LONGSOR", bg: "#82500D", icon: "/disaster_icon/landslide.png" },
+  fire: { label: "KEBAKARAN", bg: "#C64D02", icon: "/disaster_icon/fire.png" },
+};
+
+// "Terakhir diperbaharui 15 menit lalu" dst. -- dibulatkan ke satuan waktu terdekat.
+export function timeAgoLabel(iso: string, now = Date.now()): string {
+  const diffMs = now - new Date(iso).getTime();
+  const minutes = Math.max(0, Math.round(diffMs / 60000));
+  if (minutes < 1) return "Baru saja diperbaharui";
+  if (minutes < 60) return `Terakhir diperbaharui ${minutes} menit lalu`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Terakhir diperbaharui ${hours} jam lalu`;
+  return `Terakhir diperbaharui ${Math.round(hours / 24)} hari lalu`;
+}
+
+// "Respons: Menunggu bantuan" dst. -- dari help_status yang sudah dihitung backend.
+export const helpResponseLabel: Record<Report["help_status"], string> = {
+  belum_ada_konfirmasi: "Menunggu bantuan",
+  belum_terlihat: "Menunggu bantuan",
+  terlihat: "Bantuan terlihat warga",
 };
 
 export const demoNow = Date.now();

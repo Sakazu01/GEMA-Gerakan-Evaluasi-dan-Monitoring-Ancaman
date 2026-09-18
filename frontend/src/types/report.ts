@@ -45,3 +45,15 @@ export interface Report {
   not_seen_count: number;
   false_vote_count: number;
 }
+
+// Kontrak POST /api/analyze (plan.md "Kontrak API").
+export type AnalyzeResponse =
+  | {
+      validity: "relevant";
+      draft_id: string;
+      type: DisasterType;
+      severity: Severity;
+      summary: string;
+      reason: string;
+    }
+  | { validity: "invalid" | "uncertain"; reason: string };

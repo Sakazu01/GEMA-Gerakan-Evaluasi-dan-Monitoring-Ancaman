@@ -2,6 +2,7 @@
 (report.py) tetap cuma berisi bentuk keluaran."""
 
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -31,7 +32,7 @@ ReportDetails = FloodDetails | LandslideDetails | FireDetails
 class PublishReportRequest(BaseModel):
     model_config = {"extra": "forbid"}
 
-    draft_id: str
+    draft_id: UUID  # 422 otomatis kalau bukan UUID valid, bukan 500 dari database.
     lat: float = Field(ge=-90, le=90)
     lng: float = Field(ge=-180, le=180)
     location_source: LocationSource

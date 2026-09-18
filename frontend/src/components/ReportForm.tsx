@@ -7,31 +7,22 @@ import { LocationPicker } from "@/components/LocationPicker";
 import { ReportMap } from "@/components/ReportMap";
 import { useDemoReports } from "@/lib/demo-report-context";
 import { disasterNames, type MapLocation } from "@/lib/demo-reports";
-import { mockAnalyze, type AnalyzeResponse, type MockScenario } from "@/lib/mock-analyze";
-import type { FireDetails, FloodDetails, Report, ReportDetails } from "@/types/report";
+import { apiFetch } from "@/lib/api-client";
+import type { AnalyzeResponse, FireDetails, FloodDetails, ReportDetails } from "@/types/report";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const scenarios: { value: MockScenario; label: string }[] = [
-  { value: "flood_high", label: "Banjir dalam dan arus deras" },
-  { value: "flood_critical", label: "Banjir skala luas (kritis)" },
-  { value: "flood_low", label: "Genangan dangkal" },
-  { value: "landslide", label: "Longsor besar" },
-  { value: "fire", label: "Kebakaran dengan asap tebal" },
-  { value: "invalid", label: "Foto tidak relevan" },
-  { value: "uncertain", label: "Foto tidak jelas" },
-];
 
 export function ReportForm() {
-  const { addReport } = useDemoReports();
+  const { refresh } = useDemoReports();
   const [photo, setPhoto] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [error, setError] = useState("");
   const [location, setLocation] = useState<MapLocation | null>(null);
   const [locationLabel, setLocationLabel] = useState("");
-  const [scenario, setScenario] = useState<MockScenario>("flood_high");
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [waterDepth, setWaterDepth] = useState<FloodDetails["water_depth"]>(null);
@@ -70,28 +61,33 @@ export function ReportForm() {
       setError("Pilih foto JPEG, PNG, atau WebP berukuran maksimal 3 MB.");
       return;
     }
-    if (!location || !locationLabel.trim()) {
-      setError("Pilih titik lokasi dan isi keterangan lokasi terlebih dahulu.");
-      return;
-    }
     setError("");
     setAnalysis(null);
     setAnalyzing(true);
-    await new Promise((resolve) => setTimeout(resolve, 450));
-    const result = mockAnalyze(scenario);
-    if (result.validity === "relevant") {
-      setWaterDepth((scenario === "flood_high" || scenario === "flood_critical") ? ">100cm" : scenario === "flood_low" ? "<30cm" : null);
-      setCurrent((scenario === "flood_high" || scenario === "flood_critical") ? "deras" : scenario === "flood_low" ? "tenang" : null);
-      setCoveredArea(scenario === "landslide" ? "120" : "");
-      setVisibility(scenario === "fire" ? "sangat_rendah" : null);
+    try {
+      const formData = new FormData();
+      formData.append("photo", photo);
+      const result = await apiFetch<AnalyzeResponse>("/api/analyze", {
+        method: "POST",
+        body: formData,
+      });
+      if (result.validity === "relevant") {
+        setWaterDepth(null);
+        setCurrent(null);
+        setCoveredArea("");
+        setVisibility(null);
+      }
+      setAnalysis(result);
+    } catch {
+      setError("Analisis belum tersedia. Coba lagi nanti.");
+    } finally {
+      setAnalyzing(false);
     }
-    setAnalysis(result);
-    setAnalyzing(false);
   }
 
-  function sendReport(event: FormEvent<HTMLFormElement>) {
+  async function sendReport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!photo || !location || !locationLabel.trim() || analysis?.validity !== "relevant") {
+    if (!location || !locationLabel.trim() || analysis?.validity !== "relevant") {
       setError("Lengkapi foto, lokasi, dan analisis sebelum mengirim.");
       return;
     }
@@ -101,40 +97,38 @@ export function ReportForm() {
         : analysis.type === "landslide"
           ? { type: "landslide", covered_area_m2: coveredArea ? Number(coveredArea) : null }
           : { type: "fire", visibility };
-    const now = new Date().toISOString();
-    const report: Report = {
-      id: analysis.draft_id,
-      status: "active",
-      type: analysis.type,
-      severity: analysis.severity,
-      ai_summary: analysis.summary,
-      description: description.trim() || null,
-      details,
-      location_label: locationLabel.trim(),
-      location_source: location.source ?? "demo",
-      public_lat: Number(location.lat.toFixed(3)),
-      public_lng: Number(location.lng.toFixed(3)),
-      published_at: now,
-      created_at: now,
-      is_demo: true,
-      help_status: "belum_ada_konfirmasi",
-      seen_count: 0,
-      not_seen_count: 0,
-      false_vote_count: 0,
-    };
-    addReport(report);
-    setSubmittedId(report.id);
+
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await apiFetch<{ id: string }>("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          draft_id: analysis.draft_id,
+          lat: location.lat,
+          lng: location.lng,
+          location_source: location.source ?? "demo",
+          location_label: locationLabel.trim(),
+          description: description.trim() || null,
+          details,
+        }),
+      });
+      refresh();
+      setSubmittedId(result.id);
+    } catch {
+      setError("Laporan gagal dikirim. Data yang sudah diisi tetap ada, coba lagi.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submittedId) {
     return (
       <Card>
         <div role="status">
-          <h2 className="text-xl font-bold text-slate-950">Laporan DEMO berhasil dikirim</h2>
-          <p className="mt-2 text-slate-700">
-            Laporan tersimpan dalam sesi halaman ini. Foto tidak diunggah atau disimpan ke server.
-            Data akan hilang setelah halaman dimuat ulang.
-          </p>
+          <h2 className="text-xl font-bold text-slate-950">Laporan warga berhasil diterbitkan</h2>
+          <p className="mt-2 text-slate-700">Informasi belum diverifikasi petugas.</p>
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 font-semibold text-white hover:bg-blue-800">
@@ -152,10 +146,10 @@ export function ReportForm() {
     <form onSubmit={sendReport} className="space-y-5">
       <Card>
         <h2 className="text-xl font-bold text-slate-950">1. Unggah foto</h2>
-        <p className="mt-1 text-sm text-slate-700">JPEG, PNG, atau WebP; maksimal 3 MB. Foto hanya dipakai untuk simulasi pada sesi ini.</p>
+        <p className="mt-1 text-sm text-slate-700">JPEG, PNG, atau WebP; maksimal 3 MB.</p>
         <label htmlFor="report-photo" className="mt-4 block font-semibold text-slate-900">Foto indikasi bencana</label>
         <input id="report-photo" type="file" accept="image/jpeg,image/png,image/webp" required
-          disabled={analyzing} onChange={choosePhoto} className="mt-2 block w-full rounded-lg border border-slate-400 bg-white p-3 text-slate-900" />
+          disabled={analyzing || submitting} onChange={choosePhoto} className="mt-2 block w-full rounded-lg border border-slate-400 bg-white p-3 text-slate-900" />
         {photo && <p className="mt-2 text-sm text-slate-700">Dipilih: {photo.name} ({(photo.size / 1024 / 1024).toFixed(2)} MB)</p>}
         {fileError && <p role="alert" className="mt-2 font-medium text-red-800">{fileError}</p>}
       </Card>
@@ -176,26 +170,20 @@ export function ReportForm() {
       <Card>
         <h2 className="text-xl font-bold text-slate-950">3. Analisis foto</h2>
         <p className="mt-1 text-sm text-slate-700">
-          DEMO: hasil dipilih dari skenario di bawah; isi foto belum dianalisis AI sungguhan.
+          Foto dianalisis oleh model AI di server; hasilnya perkiraan, bisa keliru — periksa kembali sebelum kirim.
         </p>
-        <label htmlFor="mock-scenario" className="mt-4 block font-semibold text-slate-900">Skenario simulasi</label>
-        <select id="mock-scenario" value={scenario} disabled={analyzing} onChange={(event) => {
-          setScenario(event.target.value as MockScenario);
-          setAnalysis(null);
-        }} className="mt-2 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3 text-slate-900">
-          {scenarios.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-        </select>
-        <button type="button" onClick={analyzePhoto} disabled={analyzing}
+        <button type="button" onClick={analyzePhoto} disabled={analyzing || submitting || !photo}
           className="mt-4 min-h-11 rounded-lg bg-blue-700 px-4 font-semibold text-white hover:bg-blue-800 disabled:opacity-60">
           {analyzing ? "Menganalisis…" : "Analisis foto"}
         </button>
-        {analyzing && <p role="status" className="mt-2 text-slate-700">Menyiapkan hasil simulasi…</p>}
+        {analyzing && <p role="status" className="mt-2 text-slate-700">Sedang menganalisis foto…</p>}
         {error && <p role="alert" className="mt-2 font-medium text-red-800">{error}</p>}
         {analysis && analysis.validity !== "relevant" && (
           <div role="alert" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
-            <p className="font-bold">{analysis.validity === "invalid" ? "Foto tidak relevan" : "Hasil tidak pasti"}</p>
+            <p className="font-bold">
+              {analysis.validity === "invalid" ? "Gambar tidak valid. Unggah foto kejadian yang jelas." : "Foto belum cukup jelas untuk dianalisis. Coba foto lain."}
+            </p>
             <p className="mt-1">{analysis.reason}</p>
-            <p className="mt-1">Laporan belum dibuat. Pilih foto atau skenario lain lalu analisis ulang.</p>
           </div>
         )}
       </Card>
@@ -203,7 +191,7 @@ export function ReportForm() {
       {analysis?.validity === "relevant" && (
         <Card>
           <h2 className="text-xl font-bold text-slate-950">4. Tinjau dan kirim</h2>
-          <p className="mt-2 text-sm text-slate-700">Penilaian sementara berdasarkan simulasi, belum diverifikasi.</p>
+          <p className="mt-2 text-sm text-slate-700">Periksa kembali; AI bisa keliru.</p>
           <dl className="mt-4 space-y-3 text-slate-900">
             <div><dt className="font-semibold">Jenis indikasi</dt><dd>{disasterNames[analysis.type]}</dd></div>
             <div><dt className="font-semibold">Keparahan sementara</dt><dd className="capitalize">{analysis.severity}</dd></div>
@@ -243,10 +231,6 @@ export function ReportForm() {
                 onChange={(event) => setCoveredArea(event.target.value)}
                 placeholder="Kosongkan jika tidak tahu"
                 className="mt-2 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3 sm:max-w-xs" />
-              <button type="button" onClick={() => setCoveredArea("")}
-                className="mt-2 min-h-11 rounded-lg border border-slate-400 px-3 font-medium text-slate-800 hover:bg-slate-50">
-                Tidak tahu
-              </button>
             </div>
           )}
           {analysis.type === "fire" && (
@@ -267,8 +251,9 @@ export function ReportForm() {
           <textarea id="description" maxLength={500} rows={3} value={description}
             onChange={(event) => setDescription(event.target.value)}
             className="mt-2 w-full rounded-lg border border-slate-400 bg-white p-3" />
-          <button type="submit" className="mt-4 min-h-11 rounded-lg bg-green-700 px-5 font-semibold text-white hover:bg-green-800">
-            Kirim laporan DEMO
+          <button type="submit" disabled={submitting}
+            className="mt-4 min-h-11 rounded-lg bg-green-700 px-5 font-semibold text-white hover:bg-green-800 disabled:opacity-60">
+            {submitting ? "Laporan sedang dikirim…" : "Kirim laporan"}
           </button>
         </Card>
       )}
