@@ -1,7 +1,8 @@
 export type DisasterType = "flood" | "landslide" | "fire";
-// "tinggi" = perlu evakuasi/respons SEGERA (mis. banjir dalam + arus deras), bukan cuma
-// "kelihatan besar di foto" — beda dari genangan biasa (rendah/sedang). Lihat PRD §16.2.
-export type Severity = "rendah" | "sedang" | "tinggi";
+// 4 tingkat, tiap tingkat punya radius peringatan sendiri (PRD.md §9.2):
+// rendah=tidak pernah memicu peringatan, sedang=1km, tinggi=3km, kritis=10km.
+// "kritis" = bahaya skala luas/regional; "tinggi" tetap SEGERA tapi lebih lokal.
+export type Severity = "rendah" | "sedang" | "tinggi" | "kritis";
 export type ReportStatus = "draft" | "active" | "disputed_hidden";
 export type LocationSource = "device" | "map" | "demo";
 export type HelpVoteValue = "seen" | "not_seen";
