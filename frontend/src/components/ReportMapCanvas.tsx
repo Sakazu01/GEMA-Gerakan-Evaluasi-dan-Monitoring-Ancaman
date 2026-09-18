@@ -51,8 +51,33 @@ function buildReportPopup(report: Report, location: MapLocation | null): HTMLEle
   header.className = "gema-popup__header";
   header.style.background = style.color;
   header.style.color = style.textColor;
-  header.innerHTML = `<strong>${report.location_label}</strong>`;
+  header.innerHTML = `
+    <strong>${report.location_label}</strong>
+    <span class="gema-popup__actions">
+      <button type="button" class="gema-popup__action" aria-label="Bagikan laporan ini" data-action="share">
+        <img src="/utility_icon/share.png" alt="" width="14" height="14" />
+      </button>
+      <a href="/report/${report.id}" class="gema-popup__action" aria-label="Lihat detail laporan" data-action="detail">
+        <img src="/utility_icon/report.png" alt="" width="14" height="14" />
+      </a>
+    </span>`;
   root.appendChild(header);
+
+  // Aksi nyata (bukan dekorasi): bagikan tautan detail. "Lihat detail" pakai <a href>
+  // biasa (bukan JS navigation) supaya tetap link asli yang bisa dibuka tab baru dll.
+  // stopPropagation supaya klik tidak ikut ditangkap Leaflet (bisa menutup popup/geser peta).
+  const detailUrl = `${window.location.origin}/report/${report.id}`;
+  header.querySelector('[data-action="share"]')?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (navigator.share) {
+      navigator.share({ title: `Laporan ${disasterNames[report.type]}`, url: detailUrl }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(detailUrl).catch(() => {});
+    }
+  });
+  header.querySelector('[data-action="detail"]')?.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
 
   const body = document.createElement("div");
   body.className = "gema-popup__body";
