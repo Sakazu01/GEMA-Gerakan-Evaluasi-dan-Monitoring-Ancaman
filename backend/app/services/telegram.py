@@ -3,7 +3,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from app.core.config import settings
@@ -29,11 +29,20 @@ def _call(method: str, payload: dict[str, Any]) -> Any:
     try:
         with urlopen(request, timeout=8) as response:
             result = json.load(response)
+    except HTTPError as error:
+        # Telegram balas isi errornya sebagai JSON di body (bukan exception message) --
+        # baca itu, bukan str(error)/error.url, supaya token di URL tidak pernah ke log.
+        try:
+            detail = json.loads(error.read()).get("description", "tidak ada detail dari Telegram")
+        except Exception:
+            detail = "gagal membaca body error dari Telegram"
+        raise TelegramError(f"{method} gagal (HTTP {error.code}): {detail}") from None
     except (URLError, TimeoutError, ValueError) as error:
-        # Exception urllib dapat mengandung URL (dan token); jangan teruskan pesannya ke log.
+        # Exception urllib lain (mis. gagal konek/timeout) dapat mengandung URL (dan
+        # token) di pesannya; jangan teruskan pesannya ke log, cukup jenis errornya.
         raise TelegramError(f"{method} gagal ({type(error).__name__})") from None
     if not result.get("ok"):
-        raise TelegramError(f"{method} ditolak Telegram ({result.get('error_code', 'unknown')})")
+        raise TelegramError(f"{method} ditolak Telegram ({result.get('error_code', 'unknown')}: {result.get('description', '-')})")
     return result["result"]
 
 
