@@ -28,6 +28,7 @@ Platform pelaporan bencana berbasis foto dan AI untuk warga, dengan peta komunit
 - [Prasyarat (Prerequisites)](#prasyarat-prerequisites)
 - [Cara menjalankan (How to build & run)](#cara-menjalankan-how-to-build--run)
 - [Dua tampilan peta](#dua-tampilan-peta)
+- [Evaluasi model AI](#evaluasi-model-ai)
 - [Chatbot GEMA AI](#chatbot-gema-ai)
 - [Notifikasi responder Telegram](#notifikasi-responder-telegram)
 - [Deploy](#deploy)
@@ -72,6 +73,7 @@ cd backend
 python -m venv .venv
 .venv/Scripts/activate   # Windows; `source .venv/bin/activate` di macOS/Linux
 pip install -r requirements.txt
+cp .env.example .env    # isi SUPABASE_URL, SUPABASE_SECRET_KEY, MODEL_API_KEY
 uvicorn app.main:app --reload --port 8000
 ```
 Buka http://localhost:8000/health untuk cek server hidup.
@@ -82,9 +84,23 @@ Sebelum menguji unggah laporan, jalankan file di `backend/migrations/` lewat Sup
 
 Beranda warga terbuka pada **Analisis AI**. Gunakan toggle **Kepadatan Laporan** untuk melihat jumlah pelapor unik dari laporan aktif 24 jam terakhir dalam kelompok radius 50 m: hijau 0, kuning 1–2, merah 3–9, hitam 10 atau lebih. Angka pada titik menunjukkan jumlah; ukuran titik bertambah seiring jumlah. Ini kepadatan laporan warga **belum diverifikasi**, bukan tingkat keparahan atau batas bahaya. Backend menghitung dari koordinat asli dan hanya mengirim pusat yang dibulatkan serta jumlah. Perubahan mode tidak mengubah aturan area perhatian AI.
 
+## Evaluasi model AI
+
+Model yang dipakai saat ini: `gemini-3.1-flash-lite` (lihat `backend/app/services/model.py`) — hanya prompting + skema keluaran terstruktur, **bukan model yang di-fine-tune**. Angka dan fakta pada jawaban chatbot maupun label laporan selalu diambil dari data Supabase yang sebenarnya; model hanya menafsirkan maksud/isi foto.
+
+Spot-check kecil (bukan benchmark statistik) memakai 3 foto di `backend/test/input/`, dengan ground truth ditentukan lewat tinjauan manual sebelum foto dikirim ke model:
+
+| Foto | Jenis (tinjauan manual) | Prediksi model | Keparahan model | Cocok? |
+|---|---|---|---|---|
+| `test1.jpeg` | Banjir | Banjir | Tinggi | ✅ |
+| `test2.jpeg` | Kebakaran | Kebakaran | Kritis | ✅ |
+| `test3.jpeg` | Tanah longsor | Tanah longsor | Tinggi | ✅ |
+
+Akurasi klasifikasi jenis bencana: 3/3 (100%). F1-score makro pada sampel ini: 1,0. **Catatan jujur:** n=3 dengan 1 sampel per kelas tidak cukup untuk mengukur performa secara statistik andal — ini demonstrasi cepat bahwa pipeline bekerja pada kasus yang jelas, bukan klaim benchmark formal. Untuk hasil yang benar-benar terukur, perlu set uji yang lebih besar dan beragam (termasuk foto ambigu/uncertain).
+
 ## Chatbot GEMA AI
 
-Klik ikon **G** di kiri bawah (di atas pemilih peran) untuk membuka chat, lalu klik **X** untuk menutupnya. Contoh pertanyaan: “Berapa laporan hari ini?”, “Berapa laporan banjir?”, dan “Tampilkan laporan terbaru.”
+Klik ikon **G** di kanan bawah untuk membuka chat, lalu klik **X** untuk menutupnya. Contoh pertanyaan: “Berapa laporan hari ini?”, “Berapa laporan banjir?”, dan “Tampilkan laporan terbaru.”
 
 Frontend mengirim pertanyaan ke `POST /api/chat`. Backend membaca **laporan aktif non-demo** dari Supabase dan memakai `MODEL_API_KEY` yang sama dengan analisis foto untuk memahami maksud pertanyaan. Jumlah, daftar, dan ringkasan jawaban disusun dari data laporan yang dibaca, bukan angka buatan model. Hasil tetap berlabel **belum diverifikasi**; chatbot tidak memastikan keamanan lokasi, jumlah korban, atau kedatangan petugas. Endpoint hanya membaca data publik dan tidak memerlukan perubahan database.
 

@@ -48,7 +48,7 @@ export interface Report {
   false_vote_count: number;
 }
 
-// Kontrak POST /api/analyze (plan.md "Kontrak API").
+// Kontrak POST /api/analyze.
 export type AnalyzeResponse =
   | {
       validity: "relevant";
