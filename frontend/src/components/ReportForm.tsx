@@ -12,7 +12,7 @@ import { apiFetch } from "@/lib/api-client";
 import { requestDeviceLocation } from "@/lib/geolocation";
 import type { AnalyzeResponse, FireDetails, FloodDetails, ReportDetails } from "@/types/report";
 
-const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export function ReportForm() {
@@ -36,7 +36,6 @@ export function ReportForm() {
   const [coveredArea, setCoveredArea] = useState<number | null>(null);
   const [visibility, setVisibility] = useState<FireDetails["visibility"]>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const pickedManually = useRef(false);
   const requestedLocation = useRef(false);
 
@@ -78,7 +77,7 @@ export function ReportForm() {
       return;
     }
     if (file.size === 0 || file.size > MAX_PHOTO_BYTES) {
-      setFileError("Ukuran foto maksimal 3 MB dan tidak boleh kosong.");
+      setFileError("Ukuran foto maksimal 10 MB dan tidak boleh kosong.");
       return;
     }
     setPhoto(file);
@@ -170,15 +169,13 @@ export function ReportForm() {
         <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
         <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
           onChange={choosePhoto} className="hidden" />
-        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-          onChange={choosePhoto} className="hidden" />
         <div className="relative flex-1">
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- pratinjau file lokal, bukan aset statis.
             <img src={photoUrl} alt="Pratinjau foto laporan" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-[#0D5D3A]">
-              <p className="px-8 text-center text-white/80">Ketuk tombol di bawah untuk mengambil atau memilih foto kejadian.</p>
+              <p className="px-8 text-center text-white/80">Ketuk tombol di bawah untuk mengambil foto kejadian.</p>
             </div>
           )}
           {photoUrl && !analyzing && (
@@ -196,22 +193,19 @@ export function ReportForm() {
         </div>
         {fileError && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{fileError}</p>}
         {error && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{error}</p>}
-        <div className="flex items-center justify-between gap-3 bg-[#0D5D3A] px-6 pt-6">
-          <Link href="/" aria-label="Kembali ke beranda" className="flex min-h-11 min-w-11 items-center justify-center text-white">
+        <div className="grid grid-cols-3 items-center gap-3 bg-[#0D5D3A] px-6 pt-6">
+          <Link href="/" aria-label="Kembali ke beranda" className="flex min-h-11 min-w-11 items-center text-white">
             <ChevronLeft aria-hidden="true" size={28} />
           </Link>
           <button type="button" disabled={analyzing} aria-label="Ambil foto"
             onClick={() => cameraInputRef.current?.click()}
-            className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/60 bg-white disabled:bg-slate-300">
+            className="flex h-16 w-16 items-center justify-center justify-self-center rounded-full border-4 border-white/60 bg-white disabled:bg-slate-300">
             <Camera aria-hidden="true" className="text-[#0D5D3A]" size={26} />
           </button>
-          <button type="button" disabled={analyzing} onClick={() => fileInputRef.current?.click()}
-            className="min-h-11 rounded-lg border border-white px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">
-            Pilih foto
-          </button>
+          <div aria-hidden="true" />
         </div>
         <div className="bg-[#0D5D3A] px-6 pb-12 pt-4 text-center">
-          <p className="text-sm text-white/80">JPEG, PNG, atau WebP. Maksimal 3 MB.</p>
+          <p className="text-sm text-white/80">JPEG, PNG, atau WebP. Maksimal 10 MB.</p>
           {photo && <button type="button" disabled={analyzing} onClick={analyzePhoto}
             className="mt-3 min-h-11 w-full rounded-lg bg-white px-4 py-2 font-semibold text-[#0D5D3A] disabled:opacity-60">
             {analyzing ? "Menganalisis foto..." : "Analisis foto"}
