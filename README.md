@@ -28,6 +28,7 @@ Platform pelaporan bencana berbasis foto dan AI untuk warga, dengan peta komunit
 - [Prasyarat (Prerequisites)](#prasyarat-prerequisites)
 - [Cara menjalankan (How to build & run)](#cara-menjalankan-how-to-build--run)
 - [Dua tampilan peta](#dua-tampilan-peta)
+- [Chatbot GEMA AI](#chatbot-gema-ai)
 - [Notifikasi responder Telegram](#notifikasi-responder-telegram)
 - [Deploy](#deploy)
 
@@ -80,6 +81,12 @@ Sebelum menguji unggah laporan, jalankan file di `backend/migrations/` lewat Sup
 ## Dua tampilan peta
 
 Beranda warga terbuka pada **Analisis AI**. Gunakan toggle **Kepadatan Laporan** untuk melihat jumlah pelapor unik dari laporan aktif 24 jam terakhir dalam kelompok radius 50 m: hijau 0, kuning 1–2, merah 3–9, hitam 10 atau lebih. Angka pada titik menunjukkan jumlah; ukuran titik bertambah seiring jumlah. Ini kepadatan laporan warga **belum diverifikasi**, bukan tingkat keparahan atau batas bahaya. Backend menghitung dari koordinat asli dan hanya mengirim pusat yang dibulatkan serta jumlah. Perubahan mode tidak mengubah aturan area perhatian AI.
+
+## Chatbot GEMA AI
+
+Klik ikon **G** di kiri bawah (di atas pemilih peran) untuk membuka chat, lalu klik **X** untuk menutupnya. Contoh pertanyaan: “Berapa laporan hari ini?”, “Berapa laporan banjir?”, dan “Tampilkan laporan terbaru.”
+
+Frontend mengirim pertanyaan ke `POST /api/chat`. Backend membaca **laporan aktif non-demo** dari Supabase dan memakai `MODEL_API_KEY` yang sama dengan analisis foto untuk memahami maksud pertanyaan. Jumlah, daftar, dan ringkasan jawaban disusun dari data laporan yang dibaca, bukan angka buatan model. Hasil tetap berlabel **belum diverifikasi**; chatbot tidak memastikan keamanan lokasi, jumlah korban, atau kedatangan petugas. Endpoint hanya membaca data publik dan tidak memerlukan perubahan database.
 
 ## Notifikasi responder Telegram
 

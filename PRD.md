@@ -47,6 +47,8 @@ Sama seperti PRD asli §4: beranda peta sebaran (marker + heatmap + area merah +
 
 **Tambahan v2.2, di luar P0 PRD asli tapi sudah disepakati tim:** role switcher Warga/Pemerintah + dashboard Pemerintah read-only (statistik + tabel semua laporan). Ini kosmetik/demo, bukan fitur produksi — lihat §0 tabel di atas.
 
+**Tambahan v2.6 — chatbot GEMA AI:** ikon G di kiri bawah membuka jendela chat. Pertanyaan dikirim ke backend, yang hanya membaca laporan `active` non-demo dari Supabase dan memakai `MODEL_API_KEY` untuk menafsirkan maksud pertanyaan. Backend menghitung jumlah serta memilih laporan terbaru dan ringkasan dari data aktual; jawaban mencantumkan bahwa laporan belum diverifikasi. Pertanyaan di luar data laporan tidak dijawab dengan dugaan. Fitur ini tidak menulis ke database dan tidak mengirim kunci Supabase atau model ke frontend.
+
 **Tambahan v2.5 — notifikasi responder Telegram untuk demo:** setelah laporan diterbitkan, backend mengirim ringkasan AI ke satu grup responder. Anggota grup dapat menekan **TERIMA LAPORAN** melalui tombol Telegram; webhook bersandi mencatat `responder_status=ACCEPTED` dan waktu penerimaan. Tracker pelapor menampilkan empat langkah yang dihubungkan garis, termasuk **Petugas Menuju Lokasi** sebagai langkah keempat. Saat status berubah menjadi `ACCEPTED`, langkah ketiga dan keempat menjadi hijau dan popup **LAPORAN DITERIMA PETUGAS MENUJU LOKASI** tampil selama 10 detik. Penerimaan bukan verifikasi kejadian, keberangkatan, atau kedatangan bantuan. Dashboard Pemerintah di web tetap read-only dan role switcher tetap kosmetik.
 
 ### P1 — setelah P0 stabil
@@ -204,6 +206,7 @@ Mode peta awal adalah **Analisis AI**. Pada mode **Kepadatan Laporan**, backend 
 | `POST /api/analyze` | Bearer anon-id | Upload foto → panggil model AI → `draft` kalau relevan |
 | `POST /api/reports` | Bearer anon-id pemilik draft | Publish draft → `active`, idempoten per `draft_id`; upayakan notifikasi Telegram tanpa menggagalkan publikasi |
 | `GET /api/reports` | Tidak wajib | Proyeksi publik laporan aktif (dipakai marker AI dan daftar) |
+| `POST /api/chat` | Tidak wajib | Tanya jawab berbasis laporan aktif publik non-demo; Supabase hanya dibaca, model AI memahami maksud, backend menyusun jawaban dari data aktual |
 | `GET /api/reports/density` | Tidak wajib | Jumlah pelapor unik per kelompok 50 m dari laporan aktif 24 jam; hanya pusat dibulatkan dan jumlah |
 | `GET /api/reports/{id}` | Opsional / Bearer anon-id pemilik | Detail laporan; pemilik bisa lihat status tersembunyi sendiri |
 | `POST /api/nearby` | Bearer anon-id | Hitung `in_red` dari lokasi user (tidak disimpan) |
