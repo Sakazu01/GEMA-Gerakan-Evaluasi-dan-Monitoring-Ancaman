@@ -46,3 +46,15 @@ class NearbyRequest(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lng: float = Field(ge=-180, le=180)
     accuracy_m: float | None = None
+
+
+class FalseVoteRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    reason: str | None = Field(default=None, max_length=200)
+
+
+class HelpVoteRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    value: Literal["seen", "not_seen"]

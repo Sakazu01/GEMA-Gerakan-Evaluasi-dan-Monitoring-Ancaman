@@ -1,7 +1,6 @@
 """Baca laporan dari Supabase dan ubah jadi proyeksi publik (plan.md "Kontrak API")."""
 
 from datetime import datetime, timedelta, timezone
-from functools import lru_cache
 from typing import Any
 from uuid import uuid4
 
@@ -90,22 +89,15 @@ def list_by_author(author_id: str) -> list[ReportOut]:
 
 # --- tulis: draft (A2) ---
 
+# Bucket ini dibuat SEKALI secara manual di dashboard Supabase (Storage -> New bucket,
+# nama "report-photos", public OFF) -- bukan tugas kode ini. Kalau upload gagal dengan
+# pesan "Bucket not found", itu tandanya bucket belum dibuat, bukan bug di sini.
 PHOTO_BUCKET = "report-photos"
 _EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 
 
-@lru_cache(maxsize=1)
-def _ensure_bucket() -> None:
-    """Bucket privat dibuat sekali per proses; foto tidak pernah dibuka ke publik (PRD §11)."""
-    try:
-        get_client().storage.create_bucket(PHOTO_BUCKET, options={"public": False})
-    except Exception:
-        pass  # sudah ada
-
-
 def create_draft(author_id: str, result: AnalyzeResult, photo: bytes, mime: str) -> str:
     """Simpan foto + baris draft. Hanya dipanggil kalau AI bilang relevant (PRD §9.1)."""
-    _ensure_bucket()
     # Nama acak, bukan nama file pengguna (PRD §11).
     path = f"{author_id}/{uuid4()}.{_EXT[mime]}"
     get_client().storage.from_(PHOTO_BUCKET).upload(
@@ -185,3 +177,49 @@ def active_high_risk_candidates() -> list[dict[str, Any]]:
         .execute()
     )
     return res.data
+
+
+# --- tulis: vote (A3) ---
+
+
+class VoteError(Exception):
+    """Bungkus error dari fungsi Postgres (cast_false_vote/cast_help_vote) jadi kode
+    yang bisa dipetakan api/votes.py ke status HTTP yang tepat."""
+
+    def __init__(self, code: str):
+        self.code = code
+        super().__init__(code)
+
+
+def _call_vote_rpc(function_name: str, params: dict[str, Any]) -> dict[str, Any]:
+    """Panggil salah satu fungsi Postgres di migrations/003_vote_functions.sql dan
+    balikin baris hasilnya. Kalau fungsi itu RAISE EXCEPTION (mis. 'already_voted'),
+    Supabase membungkusnya jadi APIError -- pesannya persis sama teks yang di-raise,
+    tersedia lewat exc.message, jadi tinggal dipetakan ke VoteError.code apa adanya.
+    """
+    try:
+        res = get_client().rpc(function_name, params).execute()
+    except Exception as e:
+        raise VoteError(getattr(e, "message", None) or "unknown_error") from e
+    return res.data[0]
+
+
+def cast_false_vote(report_id: str, voter_id: str, reason: str | None) -> dict[str, Any]:
+    row = _call_vote_rpc(
+        "cast_false_vote",
+        {"p_report_id": report_id, "p_voter_id": voter_id, "p_reason": reason},
+    )
+    return {"false_vote_count": row["false_vote_count"], "status": row["result_status"]}
+
+
+def cast_help_vote(report_id: str, voter_id: str, value: str) -> dict[str, Any]:
+    row = _call_vote_rpc(
+        "cast_help_vote",
+        {"p_report_id": report_id, "p_voter_id": voter_id, "p_value": value},
+    )
+    seen, not_seen = row["seen_count"], row["not_seen_count"]
+    return {
+        "seen_count": seen,
+        "not_seen_count": not_seen,
+        "help_status": help_status_from_counts(seen, not_seen).value,
+    }
