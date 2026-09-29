@@ -1,10 +1,16 @@
+import { getAnonId } from "@/lib/anon-id";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-// ponytail: belum ada retry/auth-header — ditambahkan saat Checkpoint 6 menyambungkan Supabase JWT.
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, init);
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers: { ...init?.headers, Authorization: `Bearer ${getAnonId()}` },
+  });
   if (!res.ok) {
-    throw new Error(`API ${path} gagal: ${res.status}`);
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `API ${path} gagal: ${res.status}`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }

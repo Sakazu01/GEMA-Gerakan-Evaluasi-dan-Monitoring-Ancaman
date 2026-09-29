@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { requestDeviceLocation } from "@/lib/geolocation";
 import type { MapLocation } from "@/lib/demo-reports";
 
 export function LocationPicker({
@@ -16,32 +17,9 @@ export function LocationPicker({
   const [loading, setLoading] = useState(false);
 
   function useDeviceLocation() {
-    if (!navigator.geolocation) {
-      setMessage("Perangkat ini tidak mendukung lokasi. Pilih titik di peta atau gunakan simulasi DEMO.");
-      return;
-    }
     setLoading(true);
     setMessage("");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLoading(false);
-        if (position.coords.accuracy > 100) {
-          setMessage("Akurasi lokasi lebih dari 100 m. Pilih titik secara manual di peta.");
-          return;
-        }
-        onChange({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          label: "Lokasi perangkat (perkiraan)",
-          source: "device",
-        });
-      },
-      () => {
-        setLoading(false);
-        setMessage("Lokasi tidak tersedia atau izin ditolak. Pilih titik di peta atau gunakan simulasi DEMO.");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-    );
+    requestDeviceLocation(onChange, setMessage, () => setLoading(false));
   }
 
   return (

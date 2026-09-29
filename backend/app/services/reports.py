@@ -127,7 +127,7 @@ def publish_draft(author_id: str, req: PublishReportRequest) -> tuple[dict[str, 
         get_client()
         .table("reports")
         .select("id, status, published_at, author_id, type")
-        .eq("id", req.draft_id)
+        .eq("id", str(req.draft_id))
         .eq("author_id", author_id)
         .limit(1)
         .execute()
@@ -156,7 +156,7 @@ def publish_draft(author_id: str, req: PublishReportRequest) -> tuple[dict[str, 
         get_client()
         .table("reports")
         .update(patch)
-        .eq("id", req.draft_id)
+        .eq("id", str(req.draft_id))
         .eq("status", "draft")  # jaga-jaga kalau ada dua request barengan
         .execute()
     )
