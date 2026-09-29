@@ -52,16 +52,23 @@ function buildReportPopup(report: Report, location: MapLocation | null): HTMLEle
   header.className = "gema-popup__header";
   header.style.background = style.color;
   header.style.color = style.textColor;
-  header.innerHTML = `
-    <strong>${report.location_label}</strong>
-    <span class="gema-popup__actions">
-      <button type="button" class="gema-popup__action" aria-label="Bagikan laporan ini" data-action="share">
-        <img src="/utility_icon/share.png" alt="" width="14" height="14" />
-      </button>
-      <a href="/report/${report.id}" class="gema-popup__action" aria-label="Lihat detail laporan" data-action="detail">
-        <img src="/utility_icon/report.png" alt="" width="14" height="14" />
-      </a>
-    </span>`;
+
+  // location_label datang dari pengguna (server cuma membatasi panjangnya, bukan
+  // isinya) -- pakai textContent, bukan innerHTML, supaya tidak bisa menyuntik HTML.
+  const label = document.createElement("strong");
+  label.textContent = report.location_label;
+  header.appendChild(label);
+
+  const actions = document.createElement("span");
+  actions.className = "gema-popup__actions";
+  actions.innerHTML = `
+    <button type="button" class="gema-popup__action" aria-label="Bagikan laporan ini" data-action="share">
+      <img src="/utility_icon/share.png" alt="" width="14" height="14" />
+    </button>
+    <a href="/report/${report.id}" class="gema-popup__action" aria-label="Lihat detail laporan" data-action="detail">
+      <img src="/utility_icon/report.png" alt="" width="14" height="14" />
+    </a>`;
+  header.appendChild(actions);
   root.appendChild(header);
 
   // Aksi nyata (bukan dekorasi): bagikan tautan detail. "Lihat detail" pakai <a href>
@@ -113,7 +120,11 @@ function buildReportPopup(report: Report, location: MapLocation | null): HTMLEle
   for (const [term, desc] of rows) {
     const row = document.createElement("div");
     row.className = "gema-popup__row";
-    row.innerHTML = `<dt>${term}</dt><dd>${desc}</dd>`;
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = desc;
+    row.append(dt, dd);
     dl.appendChild(row);
   }
   body.appendChild(dl);
