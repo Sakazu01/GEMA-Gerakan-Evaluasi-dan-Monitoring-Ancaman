@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.deps.auth import require_user
@@ -19,16 +21,16 @@ _HELP_VOTE_STATUS = {
 
 
 @router.post("/reports/{report_id}/false-vote")
-def false_vote(report_id: str, req: FalseVoteRequest, user_id: str = Depends(require_user)):
+def false_vote(report_id: UUID, req: FalseVoteRequest, user_id: str = Depends(require_user)):
     try:
-        return reports_service.cast_false_vote(report_id, user_id, req.reason)
+        return reports_service.cast_false_vote(str(report_id), user_id, req.reason)
     except reports_service.VoteError as e:
         raise HTTPException(status_code=_FALSE_VOTE_STATUS.get(e.code, 400), detail=e.code)
 
 
 @router.post("/reports/{report_id}/help-vote")
-def help_vote(report_id: str, req: HelpVoteRequest, user_id: str = Depends(require_user)):
+def help_vote(report_id: UUID, req: HelpVoteRequest, user_id: str = Depends(require_user)):
     try:
-        return reports_service.cast_help_vote(report_id, user_id, req.value)
+        return reports_service.cast_help_vote(str(report_id), user_id, req.value)
     except reports_service.VoteError as e:
         raise HTTPException(status_code=_HELP_VOTE_STATUS.get(e.code, 400), detail=e.code)

@@ -59,6 +59,22 @@ def list_active(limit: int) -> list[ReportOut]:
     return [_to_public(row) for row in res.data]
 
 
+def list_all_for_monitoring() -> list[ReportOut]:
+    """Semua laporan yang sudah pernah terbit (active + disputed_hidden), buat dashboard
+    Pemerintah (PRD §3: "tabel semua laporan termasuk disputed_hidden"). Draft SENGAJA
+    tidak diikutkan -- belum punya lat/lng/location_label sampai dipublish, jadi _to_public()
+    bakal gagal kalau dipaksakan (KeyError)."""
+    res = (
+        get_client()
+        .table("reports")
+        .select(_SELECT)
+        .in_("status", ["active", "disputed_hidden"])
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return [_to_public(row) for row in res.data]
+
+
 def get_active(report_id: str) -> ReportOut | None:
     res = (
         get_client()

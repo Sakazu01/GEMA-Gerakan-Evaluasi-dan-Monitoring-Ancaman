@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.deps.auth import require_user
@@ -18,9 +20,18 @@ def list_reports(limit: int = 50):
     return reports_service.list_active(limit)
 
 
+# Harus didaftarkan SEBELUM /reports/{report_id} -- kalau tidak, "all" bakal dicoba
+# di-parse sebagai UUID oleh route di bawahnya dan gagal 422.
+@router.get("/reports/all", response_model=list[ReportOut])
+def list_all_reports():
+    """Dashboard Pemerintah (PRD §3): semua laporan yang sudah terbit, termasuk
+    disputed_hidden -- bukan cuma yang aktif seperti GET /reports biasa."""
+    return reports_service.list_all_for_monitoring()
+
+
 @router.get("/reports/{report_id}", response_model=ReportOut)
-def get_report(report_id: str):
-    report = reports_service.get_active(report_id)
+def get_report(report_id: UUID):
+    report = reports_service.get_active(str(report_id))
     if report is None:
         # Draft dan laporan tersembunyi dijawab 404 — jangan bocorkan keberadaannya (PRD §9.1).
         raise HTTPException(status_code=404, detail="Laporan tidak tersedia")

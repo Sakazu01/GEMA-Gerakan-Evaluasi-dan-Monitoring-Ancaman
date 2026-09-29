@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Card } from "@/components/ui/Card";
-import { disasterNames } from "@/lib/demo-reports";
+import { ChevronRight } from "lucide-react";
+import { disasterBadge, disasterNames, severityMap } from "@/lib/demo-reports";
 import type { Report } from "@/types/report";
 
 export function ReportList({ reports }: { reports: Report[] }) {
@@ -8,31 +8,36 @@ export function ReportList({ reports }: { reports: Report[] }) {
     return <p className="text-slate-600">Belum ada laporan aktif di area ini.</p>;
   }
   return (
-    <ul className="grid gap-3 md:grid-cols-2">
+    <ul className="space-y-2">
       {reports.map((report) => (
         <li key={report.id}>
-          <Card className="h-full border-slate-200">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-semibold text-slate-900">{disasterNames[report.type]}</span>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-800">
-                Keparahan {report.severity}
+          <Link
+            href={`/report/${report.id}`}
+            className="flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- ikon PNG kecil, sama seperti badge di ReportForm. */}
+            <img
+              src={disasterBadge[report.type].icon}
+              alt=""
+              width={28}
+              height={28}
+              className="shrink-0 rounded-full p-1.5"
+              style={{ background: disasterBadge[report.type].bg }}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-slate-900">{disasterNames[report.type]}</span>
+                <span
+                  className="rounded-full px-2 py-0.5 text-xs font-bold"
+                  style={{ background: severityMap[report.severity].color, color: severityMap[report.severity].textColor }}
+                >
+                  {severityMap[report.severity].label}
+                </span>
               </span>
-              {report.is_demo && <span className="font-semibold text-amber-800">DEMO</span>}
-            </div>
-            <p className="mt-3 text-slate-900">{report.ai_summary}</p>
-            <p className="mt-2 text-sm text-slate-700">{report.location_label}</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Dilaporkan warga · Belum diverifikasi · {report.published_at && new Date(report.published_at).toLocaleString("id-ID", {
-                timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short",
-              })} WIB
-            </p>
-            <Link
-              href={`/report/${report.id}`}
-              className="mt-3 inline-flex min-h-11 items-center font-semibold text-blue-800 underline underline-offset-2 hover:text-blue-950"
-            >
-              Lihat detail {disasterNames[report.type].toLowerCase()} di {report.location_label}
-            </Link>
-          </Card>
+              <span className="mt-0.5 block truncate text-sm text-slate-600">{report.location_label}</span>
+            </span>
+            <ChevronRight aria-hidden="true" className="shrink-0 text-slate-400" size={20} />
+          </Link>
         </li>
       ))}
     </ul>

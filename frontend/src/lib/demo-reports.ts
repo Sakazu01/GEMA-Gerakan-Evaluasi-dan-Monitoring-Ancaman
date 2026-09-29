@@ -20,6 +20,16 @@ export const severityMap: Record<Severity, {
   kritis: { color: "#242424", textColor: "#FAFAFA", warningRadiusM: 10000, label: "KRITIS", radiusLabel: "radius >10 km", badgeBg: "#242424" },
 };
 
+// Target eskalasi instansi per tingkat keparahan -- dari proposal tim (Tabel 4.1). Teks
+// referensi murni di frontend, BUKAN notifikasi/dispatch nyata (PRD §5/§4 -- produk ini
+// tidak menghubungi instansi). Jangan sambungkan ke logika backend apa pun.
+export const escalationTarget: Record<Severity, string> = {
+  rendah: "Pemantau internal sistem",
+  sedang: "Instansi penanggung jawab wilayah",
+  tinggi: "Penambahan BASARNAS dan instansi teknis",
+  kritis: "Eskalasi hingga tingkat komando nasional",
+};
+
 export const severityOrder = ["rendah", "sedang", "tinggi", "kritis"] as const satisfies readonly Severity[];
 
 // "TERKENDALI" saja (tanpa radius); yang lain "WASPADA (radius ±1 km)" dst.
@@ -41,6 +51,48 @@ export const disasterBadge: Record<DisasterType, { label: string; bg: string; ic
   fire: { label: "KEBAKARAN", bg: "#C64D02", icon: "/disaster_icon/fire.png" },
 };
 
+// Satu sumber panduan keselamatan per jenis bencana -- dipakai di /evakuasi DAN di layar
+// "Hasil Identifikasi" (ReportForm) supaya isinya tidak pernah dobel-tulis/berbeda.
+export const disasterGuides: Record<DisasterType, { headline: string; do: string[]; dont: string[] }> = {
+  flood: {
+    headline: "Jauhi arus dan genangan dalam",
+    do: [
+      "Pindah ke tempat yang lebih tinggi jika aman dilakukan.",
+      "Bawa obat, dokumen penting, dan telepon jika mudah dijangkau.",
+      "Ikuti arahan dan jalur yang ditunjukkan petugas.",
+    ],
+    dont: [
+      "Jangan menyeberangi arus banjir, walau terlihat dangkal.",
+      "Jangan menyentuh peralatan listrik saat berada di air.",
+      "Jangan kembali ke lokasi hanya untuk mengambil barang.",
+    ],
+  },
+  landslide: {
+    headline: "Jauhi jalur longsor",
+    do: [
+      "Menjauh dari lereng dan material yang masih bisa bergerak.",
+      "Cari tempat terbuka/lapang jika aman dilakukan.",
+      "Waspadai longsor susulan sebelum kembali ke lokasi.",
+    ],
+    dont: [
+      "Jangan berlindung di bawah tebing atau tanah yang retak.",
+      "Jangan kembali ke area longsor sebelum dinyatakan aman petugas.",
+    ],
+  },
+  fire: {
+    headline: "Jauhi api dan asap",
+    do: [
+      "Segera menjauh dari sumber api dan asap.",
+      "Ikuti jalur keluar yang aman.",
+      "Periksa listrik dan gas hanya jika bisa dilakukan tanpa mendekati bahaya.",
+    ],
+    dont: [
+      "Jangan kembali untuk mengambil barang.",
+      "Jangan gunakan lift saat evakuasi dari bangunan.",
+    ],
+  },
+};
+
 // "Terakhir diperbaharui 15 menit lalu" dst. -- dibulatkan ke satuan waktu terdekat.
 export function timeAgoLabel(iso: string, now = Date.now()): string {
   const diffMs = now - new Date(iso).getTime();
@@ -60,151 +112,6 @@ export const helpResponseLabel: Record<Report["help_status"], string> = {
 };
 
 export const demoNow = Date.now();
-const hoursAgo = (hours: number) => new Date(demoNow - hours * 60 * 60 * 1000).toISOString();
-
-// Satu sumber data dummy untuk B1, B2, dan B3. Semua koordinat di sini adalah lokasi demo.
-export const demoReports: Report[] = [
-  {
-    id: "b6e1f2a0-0000-4000-8000-000000000001",
-    status: "active",
-    type: "flood",
-    severity: "tinggi",
-    ai_summary: "Genangan diperkirakan lebih dari 1 meter dengan arus terlihat deras.",
-    description: "Air masuk ke rumah warga sejak siang.",
-    details: { type: "flood", water_depth: ">100cm", current: "deras" },
-    location_label: "Sekitar Jl. Asia Afrika, Bandung",
-    location_source: "demo",
-    public_lat: -6.9216,
-    public_lng: 107.6071,
-    published_at: hoursAgo(2),
-    created_at: hoursAgo(2.1),
-    is_demo: true,
-    help_status: "belum_ada_konfirmasi",
-    seen_count: 0,
-    not_seen_count: 0,
-    false_vote_count: 0,
-  },
-  {
-    id: "b6e1f2a0-0000-4000-8000-000000000002",
-    status: "active",
-    type: "landslide",
-    severity: "sedang",
-    ai_summary: "Material tanah terlihat menutup sebagian akses jalan.",
-    description: "Warga diminta berhati-hati saat melintas.",
-    details: { type: "landslide", covered_area_m2: 25 },
-    location_label: "Sekitar Dago Atas, Bandung",
-    location_source: "demo",
-    public_lat: -6.8679,
-    public_lng: 107.6208,
-    published_at: hoursAgo(5),
-    created_at: hoursAgo(5.2),
-    is_demo: true,
-    help_status: "belum_terlihat",
-    seen_count: 0,
-    not_seen_count: 1,
-    false_vote_count: 0,
-  },
-  {
-    id: "b6e1f2a0-0000-4000-8000-000000000003",
-    status: "active",
-    type: "fire",
-    severity: "tinggi",
-    ai_summary: "Asap tebal terlihat dan jarak pandang tampak sangat rendah.",
-    description: "Asap terlihat dari beberapa bangunan sekitar.",
-    details: { type: "fire", visibility: "sangat_rendah" },
-    location_label: "Sekitar Jl. Braga, Bandung",
-    location_source: "demo",
-    public_lat: -6.9178,
-    public_lng: 107.6098,
-    published_at: hoursAgo(1),
-    created_at: hoursAgo(1.1),
-    is_demo: true,
-    help_status: "terlihat",
-    seen_count: 2,
-    not_seen_count: 0,
-    false_vote_count: 0,
-  },
-  {
-    id: "b6e1f2a0-0000-4000-8000-000000000004",
-    status: "active",
-    type: "flood",
-    severity: "rendah",
-    ai_summary: "Genangan dangkal tampak di tepi jalan; arus tidak terlihat deras.",
-    description: null,
-    details: { type: "flood", water_depth: "<30cm", current: "tenang" },
-    location_label: "Sekitar Alun-alun Bandung",
-    location_source: "demo",
-    public_lat: -6.9219,
-    public_lng: 107.6065,
-    published_at: hoursAgo(3),
-    created_at: hoursAgo(3.1),
-    is_demo: true,
-    help_status: "belum_ada_konfirmasi",
-    seen_count: 0,
-    not_seen_count: 0,
-    false_vote_count: 0,
-  },
-  {
-    id: "b6e1f2a0-0000-4000-8000-000000000005",
-    status: "active",
-    type: "landslide",
-    severity: "tinggi",
-    ai_summary: "Material longsor besar terlihat dekat permukiman.",
-    description: "Akses jalan masih tertutup material.",
-    details: { type: "landslide", covered_area_m2: 120 },
-    location_label: "Sekitar Ciumbuleuit, Bandung",
-    location_source: "demo",
-    public_lat: -6.8755,
-    public_lng: 107.6046,
-    published_at: hoursAgo(28),
-    created_at: hoursAgo(28.2),
-    is_demo: true,
-    help_status: "belum_ada_konfirmasi",
-    seen_count: 0,
-    not_seen_count: 0,
-    false_vote_count: 1,
-  },
-  {
-    id: "b6e1f2a0-0000-4000-8000-000000000007",
-    status: "active",
-    type: "flood",
-    severity: "kritis",
-    ai_summary: "Banjir luas terlihat menutup banyak rumah dan beberapa ruas jalan.",
-    description: "Simulasi kejadian skala luas untuk menguji radius perhatian 10 km.",
-    details: { type: "flood", water_depth: ">100cm", current: "deras" },
-    location_label: "Sekitar Bandung Timur (DEMO)",
-    location_source: "demo",
-    public_lat: -6.955,
-    public_lng: 107.688,
-    published_at: hoursAgo(1.5),
-    created_at: hoursAgo(1.6),
-    is_demo: true,
-    help_status: "belum_ada_konfirmasi",
-    seen_count: 0,
-    not_seen_count: 0,
-    false_vote_count: 0,
-  },
-  {
-    id: "b6e1f2a0-0000-4000-8000-000000000006",
-    status: "disputed_hidden",
-    type: "fire",
-    severity: "sedang",
-    ai_summary: "Asap terlihat di sekitar bangunan, tetapi laporan sedang disanggah warga.",
-    description: null,
-    details: { type: "fire", visibility: "terbatas" },
-    location_label: "Sekitar Jl. Cihampelas, Bandung",
-    location_source: "demo",
-    public_lat: -6.8938,
-    public_lng: 107.6049,
-    published_at: hoursAgo(4),
-    created_at: hoursAgo(4.1),
-    is_demo: true,
-    help_status: "belum_ada_konfirmasi",
-    seen_count: 0,
-    not_seen_count: 0,
-    false_vote_count: 3,
-  },
-];
 
 export type MapLocation = { lat: number; lng: number; label: string; source?: LocationSource; accuracy_m?: number };
 
@@ -214,25 +121,4 @@ export function isWarningZoneReport(report: Report, now = Date.now()) {
   }
   const age = now - new Date(report.published_at).getTime();
   return age >= 0 && age <= 24 * 60 * 60 * 1000;
-}
-
-// ponytail: B1 memakai koordinat publik dummy. Saat C1, ambil hasil /api/nearby
-// yang menghitung jarak dari koordinat asli di server.
-export function nearestWarningZone(reports: Report[], location: MapLocation) {
-  const radians = Math.PI / 180;
-  let nearest: { report: Report; distance_m: number } | null = null;
-  for (const report of reports) {
-    if (!isWarningZoneReport(report)) continue;
-    const dLat = (report.public_lat - location.lat) * radians;
-    const dLng = (report.public_lng - location.lng) * radians;
-    const a = Math.sin(dLat / 2) ** 2 +
-      Math.cos(location.lat * radians) * Math.cos(report.public_lat * radians) *
-      Math.sin(dLng / 2) ** 2;
-    const distance_m = 2 * 6371000 * Math.asin(Math.sqrt(a));
-    if (distance_m <= severityMap[report.severity].warningRadiusM &&
-      (!nearest || distance_m < nearest.distance_m)) {
-      nearest = { report, distance_m };
-    }
-  }
-  return nearest;
 }

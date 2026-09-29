@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { RoleProvider } from "@/lib/role-context";
 import { DemoReportProvider } from "@/lib/demo-report-context";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Plus Jakarta Sans -- dibuat kolektif Indonesia untuk program Jakarta Smart City,
+// dipilih agar identitas tipografi GEMA terasa "punya" (bukan default Geist/Inter
+// generik), sekaligus tetap sangat terbaca di layar Android murah ukuran kecil.
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
 });
 
@@ -22,10 +20,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="id" className={`${plusJakartaSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <RoleProvider>
           <DemoReportProvider>{children}</DemoReportProvider>
