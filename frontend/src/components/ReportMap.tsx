@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { forwardRef } from "react";
 import type { MapLocation } from "@/lib/demo-reports";
 import type { Report } from "@/types/report";
-import type { ReportMapHandle } from "./ReportMapCanvas";
+import type { DensityPoint, MapMode, ReportMapHandle } from "./ReportMapCanvas";
 
 const MapCanvas = dynamic(() => import("./ReportMapCanvas"), {
   ssr: false,
@@ -17,13 +17,15 @@ export const ReportMap = forwardRef<ReportMapHandle, {
   onPickLocation: (location: MapLocation) => void;
   pickerOnly?: boolean;
   fullBleed?: boolean;
-}>(function ReportMap({ reports, location, onPickLocation, pickerOnly = false, fullBleed = false }, ref) {
+  mode?: MapMode;
+  densityPoints?: DensityPoint[] | null;
+}>(function ReportMap({ reports, location, onPickLocation, pickerOnly = false, fullBleed = false, mode = "ai", densityPoints = null }, ref) {
   if (fullBleed) {
-    return <MapCanvas ref={ref} reports={reports} location={location} onPickLocation={onPickLocation} fullBleed />;
+    return <MapCanvas ref={ref} reports={reports} location={location} onPickLocation={onPickLocation} fullBleed mode={mode} densityPoints={densityPoints} />;
   }
   return (
     <div>
-      <MapCanvas ref={ref} reports={reports} location={location} onPickLocation={onPickLocation} />
+      <MapCanvas ref={ref} reports={reports} location={location} onPickLocation={onPickLocation} mode={mode} densityPoints={densityPoints} />
       <p className="mt-2 text-sm text-slate-600">
         Peta memerlukan koneksi internet untuk menampilkan ubin OpenStreetMap.
         {pickerOnly ? " Klik peta untuk memilih lokasi laporan secara manual." :

@@ -2,6 +2,7 @@ export type DisasterType = "flood" | "landslide" | "fire";
 // PRD v2.3 menambah kritis; backend/app/schemas/report.py perlu disinkronkan sebelum C1.
 export type Severity = "rendah" | "sedang" | "tinggi" | "kritis";
 export type ReportStatus = "draft" | "active" | "disputed_hidden";
+export type ResponderStatus = "PENDING" | "ACCEPTED";
 export type LocationSource = "device" | "map" | "demo";
 export type HelpVoteValue = "seen" | "not_seen";
 export type HelpStatus = "belum_ada_konfirmasi" | "belum_terlihat" | "terlihat";
@@ -28,6 +29,7 @@ export type ReportDetails =
 export interface Report {
   id: string;
   status: ReportStatus;
+  responder_status: ResponderStatus;
   type: DisasterType;
   severity: Severity;
   ai_summary: string;

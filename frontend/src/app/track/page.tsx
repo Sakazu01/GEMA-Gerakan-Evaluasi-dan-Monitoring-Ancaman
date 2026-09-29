@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Info, RefreshCw, Search, Share2 } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { NavDrawer } from "@/components/NavDrawer";
 import { Card } from "@/components/ui/Card";
 import { apiFetch } from "@/lib/api-client";
+import { hasNewAcceptance } from "@/lib/tracker-acceptance";
 import { disasterBadge, disasterNames, severityMap } from "@/lib/demo-reports";
 import type { Report, ReportStatus } from "@/types/report";
 
@@ -22,24 +23,41 @@ export default function TrackPage() {
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [acceptedNotice, setAcceptedNotice] = useState(0);
+  const previousStatuses = useRef<Map<string, Report["responder_status"]> | null>(null);
+  const latestRequest = useRef(0);
 
   const loadReports = useCallback(async () => {
+    const request = ++latestRequest.current;
     try {
       const data = await apiFetch<Report[]>("/api/my-reports");
+      if (request !== latestRequest.current) return;
+      if (hasNewAcceptance(previousStatuses.current, data)) setAcceptedNotice((value) => value + 1);
+      previousStatuses.current = new Map(data.map((report) => [report.id, report.responder_status]));
       setReports(data);
       setError(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Tidak dapat memuat laporan.");
+      if (request === latestRequest.current) {
+        setError(cause instanceof Error ? cause.message : "Tidak dapat memuat laporan.");
+      }
     }
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    apiFetch<Report[]>("/api/my-reports")
-      .then((data) => { if (!cancelled) setReports(data); })
-      .catch((cause: Error) => { if (!cancelled) setError(cause.message); });
-    return () => { cancelled = true; };
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount mengikuti pola tracker sebelumnya.
+    void loadReports();
+    const requestRef = latestRequest;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadReports();
+    }, 10_000);
+    return () => { window.clearInterval(timer); requestRef.current++; };
+  }, [loadReports]);
+
+  useEffect(() => {
+    if (!acceptedNotice) return;
+    const timer = window.setTimeout(() => setAcceptedNotice(0), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [acceptedNotice]);
 
   async function shareReport(report: Report) {
     const url = `${window.location.origin}/report/${report.id}`;
@@ -137,6 +155,7 @@ export default function TrackPage() {
                     {report.details?.type === "fire" && (
                       <><dt>Jarak pandang</dt><dd>{report.details.visibility?.replaceAll("_", " ") ?? "Tidak diketahui"}</dd></>
                     )}
+                    <dt>Respons petugas</dt><dd>{report.responder_status === "ACCEPTED" ? "Laporan diterima petugas; isi belum diverifikasi" : "Menunggu penerimaan petugas"}</dd>
                     <dt>Kabar bantuan</dt><dd>{report.help_status === "terlihat" ? "Dilaporkan terlihat oleh warga" : report.help_status === "belum_terlihat" ? "Ada warga yang melaporkan belum terlihat" : "Belum ada konfirmasi warga yang cukup"}</dd>
                   </dl>
                   <p className="mt-2 text-xs text-slate-500">
@@ -145,18 +164,26 @@ export default function TrackPage() {
                     })} WIB
                   </p>
 
-                  <ol aria-label="Tahapan laporan" className="mt-3 grid grid-cols-3 gap-1 text-center text-[11px] text-slate-700">
-                    <li>
-                      <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[#0D5D3A] font-bold text-white">1</span>
-                      <span className="mt-1 block">Laporan dibuat</span>
+                  <ol aria-label="Tahapan laporan" className="mt-3 flex text-center text-[11px] text-slate-700">
+                    <li className="relative min-w-0 flex-1">
+                      <span aria-hidden="true" className={`absolute left-1/2 top-[18px] w-full border-t-2 ${report.published_at ? "border-[#0D5D3A]" : "border-slate-300"}`} />
+                      <span className="relative z-10 mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[#0D5D3A] font-bold text-white">1</span>
+                      <span className="mt-1 block leading-tight">Laporan dibuat</span>
                     </li>
-                    <li>
-                      <span className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full font-bold ${report.published_at ? "bg-[#0D5D3A] text-white" : "bg-slate-200 text-slate-600"}`}>2</span>
-                      <span className="mt-1 block">{report.status === "disputed_hidden" ? "Disembunyikan" : "Diterbitkan"}</span>
+                    <li className="relative min-w-0 flex-1">
+                      <span aria-hidden="true" className={`absolute left-1/2 top-[18px] w-full border-t-2 ${report.responder_status === "ACCEPTED" ? "border-[#0D5D3A]" : "border-slate-300"}`} />
+                      <span className={`relative z-10 mx-auto flex h-9 w-9 items-center justify-center rounded-full font-bold ${report.published_at ? "bg-[#0D5D3A] text-white" : "bg-slate-200 text-slate-600"}`}>2</span>
+                      <span className="mt-1 block leading-tight">{report.status === "disputed_hidden" ? "Disembunyikan" : "Diterbitkan"}</span>
                     </li>
-                    <li>
-                      <span className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full font-bold ${report.help_status === "terlihat" ? "bg-[#0D5D3A] text-white" : "bg-slate-200 text-slate-600"}`}>3</span>
-                      <span className="mt-1 block">{report.help_status === "terlihat" ? "Bantuan terlihat" : "Menunggu kabar"}</span>
+                    <li className="relative min-w-0 flex-1" aria-current={report.responder_status === "ACCEPTED" ? undefined : "step"}>
+                      <span aria-hidden="true" className={`absolute left-1/2 top-[18px] w-full border-t-2 ${report.responder_status === "ACCEPTED" ? "border-[#0D5D3A]" : "border-slate-300"}`} />
+                      <span className={`relative z-10 mx-auto flex h-9 w-9 items-center justify-center rounded-full font-bold ${report.responder_status === "ACCEPTED" || report.help_status === "terlihat" ? "bg-[#0D5D3A] text-white" : "bg-slate-200 text-slate-600"}`}>3</span>
+                      <span className="mt-1 block leading-tight">{report.help_status === "terlihat" ? "Bantuan terlihat" : "Menunggu kabar"}</span>
+                    </li>
+                    <li className="relative min-w-0 flex-1" aria-current={report.responder_status === "ACCEPTED" ? "step" : undefined}>
+                      <span className={`relative z-10 mx-auto flex h-9 w-9 items-center justify-center rounded-full font-bold ${report.responder_status === "ACCEPTED" ? "bg-[#0D5D3A] text-white" : "bg-slate-200 text-slate-600"}`}>4</span>
+                      <span className="mt-1 block leading-tight">Petugas Menuju Lokasi</span>
+                      <span className="mt-1 block text-[10px] font-medium">{report.responder_status === "ACCEPTED" ? "Diterima petugas" : "Menunggu konfirmasi"}</span>
                     </li>
                   </ol>
                 </Card>
@@ -165,6 +192,13 @@ export default function TrackPage() {
           </ul>
         )}
       </main>
+      {acceptedNotice > 0 && (
+        <div role="status" className="fixed inset-x-4 bottom-6 z-50 mx-auto flex max-w-sm items-center justify-between gap-3 rounded-lg border border-[#0D5D3A] bg-white p-4 text-slate-950 shadow-lg">
+          <p className="font-semibold">LAPORAN DITERIMA PETUGAS MENUJU LOKASI</p>
+          <button type="button" onClick={() => setAcceptedNotice(0)}
+            className="min-h-11 min-w-11 rounded-lg border border-slate-300 px-2 font-medium">Tutup</button>
+        </div>
+      )}
       <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
   );

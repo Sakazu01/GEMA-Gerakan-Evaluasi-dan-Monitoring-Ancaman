@@ -1,9 +1,6 @@
 import type { DisasterType, LocationSource, Report, Severity } from "@/types/report";
 
-// Radius perhatian mengikuti PRD v2.3 dan harus sama dengan backend. Radiusnya dalam meter;
-// radius heatmap Leaflet dalam piksel, sehingga keduanya tidak boleh disamakan.
-export const heatmapRadiusPx = 25;
-export const heatmapBlurPx = 15;
+// Radius perhatian mengikuti PRD v2.3 dan harus sama dengan backend.
 // Warna dan label persis sesuai desain Figma "Tool tip detail bencana"
 // (https://www.figma.com/design/GEvmpaKV6swe0PCwgyaT2Z/GEMA?node-id=223-8863).
 export const severityMap: Record<Severity, {
@@ -21,8 +18,8 @@ export const severityMap: Record<Severity, {
 };
 
 // Target eskalasi instansi per tingkat keparahan -- dari proposal tim (Tabel 4.1). Teks
-// referensi murni di frontend, BUKAN notifikasi/dispatch nyata (PRD §5/§4 -- produk ini
-// tidak menghubungi instansi). Jangan sambungkan ke logika backend apa pun.
+// referensi murni di frontend, bukan aturan pengiriman grup Telegram responder.
+// Teks ini tidak berarti instansi dalam daftar sudah menerima notifikasi.
 export const escalationTarget: Record<Severity, string> = {
   rendah: "Pemantau internal sistem",
   sedang: "Instansi penanggung jawab wilayah",

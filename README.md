@@ -40,7 +40,27 @@ uvicorn app.main:app --reload --port 8000
 ```
 Buka http://localhost:8000/health untuk cek server hidup.
 
-Sebelum menguji unggah laporan, jalankan file di `backend/migrations/` lewat Supabase SQL Editor secara berurutan: `001_initial.sql`, `002_severity_kritis.sql`, lalu `003_vote_functions.sql`. Untuk database yang sudah ada, jalankan migrasi yang belum diterapkan. Migrasi `002` wajib agar hasil AI dengan severity `kritis` bisa disimpan.
+Sebelum menguji unggah laporan, jalankan file di `backend/migrations/` lewat Supabase SQL Editor secara berurutan: `001_initial.sql`, `002_severity_kritis.sql`, lalu `003_vote_functions.sql`, kemudian `004_telegram_responder.sql`. Untuk database yang sudah ada, jalankan migrasi yang belum diterapkan. Migrasi `002` wajib agar hasil AI dengan severity `kritis` bisa disimpan.
+
+## Dua tampilan peta
+
+Beranda warga terbuka pada **Analisis AI**. Gunakan toggle **Kepadatan Laporan** untuk melihat jumlah pelapor unik dari laporan aktif 24 jam terakhir dalam kelompok radius 50 m: hijau 0, kuning 1–2, merah 3–9, hitam 10 atau lebih. Angka pada titik menunjukkan jumlah; ukuran titik bertambah seiring jumlah. Ini kepadatan laporan warga **belum diverifikasi**, bukan tingkat keparahan atau batas bahaya. Backend menghitung dari koordinat asli dan hanya mengirim pusat yang dibulatkan serta jumlah. Perubahan mode tidak mengubah aturan area perhatian AI.
+
+## Notifikasi responder Telegram
+
+Setelah migrasi `004_telegram_responder.sql`, isi `TELE_API` dan `TELE_CHAT_ID` yang sudah ada, lalu buat `TELEGRAM_WEBHOOK_SECRET` di `backend/.env`. Contoh membuat secret: `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Jangan masukkan nilai asli ke `.env.example` atau frontend.
+
+Saat laporan diterbitkan, backend mengirim ringkasan AI ke grup Telegram responder. Laporan tetap tersimpan jika pengiriman Telegram gagal; kegagalannya muncul di log backend. Tombol **TERIMA LAPORAN** mengubah `responder_status` menjadi `ACCEPTED`, dan tracker warga memeriksa pembaruan setiap 10 detik selama halaman terbuka. Penerimaan berarti pesan diterima anggota grup responder, bukan laporan sudah diverifikasi atau bantuan sudah tiba. Siapa pun yang dapat menekan tombol di grup tersebut bisa menerimanya; batasi keanggotaan grup sebelum memakai data nyata.
+
+Telegram memerlukan URL backend HTTPS publik. Jalankan backend melalui deployment atau tunnel (misalnya ngrok/Cloudflare Tunnel), lalu daftarkan URL dasarnya dari direktori `backend/`:
+
+```powershell
+.\.venv\Scripts\python.exe set_telegram_webhook.py https://NAMA-HOST-PUBLIK
+```
+
+URL webhook yang didaftarkan adalah `https://NAMA-HOST-PUBLIK/api/telegram/webhook`. Jika URL tunnel berubah, jalankan perintah itu lagi. Restart backend setelah mengubah `backend/.env`; frontend cukup dimuat ulang bila servernya sudah berjalan.
+
+Uji manual: buka frontend sebagai warga, unggah foto dan terbitkan laporan, pastikan satu pesan bertombol muncul di grup, buka `/track` pada browser pelapor yang sama, tekan tombol di Telegram, lalu tunggu maksimal sekitar 10 detik. Langkah **Menunggu kabar** dan **Petugas Menuju Lokasi** menjadi hijau; popup **LAPORAN DITERIMA PETUGAS MENUJU LOKASI** tampil sekali selama 10 detik. Muat ulang halaman: popup tidak muncul lagi. Tekan tombol lama dua kali atau oleh dua anggota: hanya penerimaan pertama yang dicatat.
 
 ## Deploy
 

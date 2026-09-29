@@ -159,6 +159,7 @@ export function PemerintahDashboard() {
               const disputed = report.status === "disputed_hidden";
               const accent = disputed ? "#CF0003" : severityMap[report.severity].color;
               const tint = disputed ? "#FFD1D1" : severityMap[report.severity].badgeBg;
+              const critical = !disputed && report.severity === "kritis";
               return (
                 <li key={report.id}>
                   <Link
@@ -166,14 +167,14 @@ export function PemerintahDashboard() {
                     className="block rounded-lg border-l-4 p-4 shadow-sm transition-shadow hover:shadow-md"
                     style={{ borderLeftColor: accent, background: tint }}
                   >
-                    <p className="text-xs font-bold uppercase tracking-wide" style={{ color: accent }}>
+                    <p className="text-xs font-bold uppercase tracking-wide" style={{ color: critical ? severityMap.kritis.textColor : accent }}>
                       {disputed ? "Disanggah warga" : severityMap[report.severity].label}
                     </p>
-                    <p className="mt-1 font-semibold text-slate-900">
+                    <p className={critical ? "mt-1 font-semibold text-white" : "mt-1 font-semibold text-slate-900"}>
                       {disasterNames[report.type]} — {report.location_label}
                     </p>
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-700">{report.ai_summary}</p>
-                    <p className="mt-2 border-t border-black/10 pt-2 text-xs font-medium text-slate-600">
+                    <p className={critical ? "mt-1 line-clamp-2 text-sm text-white" : "mt-1 line-clamp-2 text-sm text-slate-700"}>{report.ai_summary}</p>
+                    <p className={critical ? "mt-2 border-t border-white/30 pt-2 text-xs font-medium text-white" : "mt-2 border-t border-black/10 pt-2 text-xs font-medium text-slate-600"}>
                       Target eskalasi: {escalationTarget[report.severity]}
                     </p>
                   </Link>
