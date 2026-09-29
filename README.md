@@ -1,5 +1,17 @@
 # GEMA — Gerakan Evaluasi dan Monitoring Ancaman
 
+Platform pelaporan bencana berbasis foto dan AI untuk warga, dengan peta komunitas real-time dan dashboard pemantauan untuk pemerintah.
+
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?logo=supabase&logoColor=white)
+![Gemini AI](https://img.shields.io/badge/Gemini-AI-4285F4?logo=googlegemini&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 **Tim Labtek V Ijo Lumut Kya** — Institut Teknologi Bandung
 
 - Juan Oloando Simanungkalit
@@ -7,6 +19,17 @@
 - Naomi Azzahra
 - Wa Ode Amerta Lambelu Jamaluddin
 - Endda Tsa Azzahra Syaifur
+
+## Daftar Isi
+
+- [Demo](#demo)
+- [Tujuan](#tujuan)
+- [Struktur](#struktur)
+- [Prasyarat (Prerequisites)](#prasyarat-prerequisites)
+- [Cara menjalankan (How to build & run)](#cara-menjalankan-how-to-build--run)
+- [Dua tampilan peta](#dua-tampilan-peta)
+- [Notifikasi responder Telegram](#notifikasi-responder-telegram)
+- [Deploy](#deploy)
 
 ## Demo
 
