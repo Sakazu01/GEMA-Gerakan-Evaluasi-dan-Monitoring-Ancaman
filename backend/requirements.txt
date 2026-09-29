@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic-settings>=2.4
+python-multipart>=0.0.9
+supabase>=2.7
+# SDK model AI belum dipilih final (lihat app/services/model.py) — tambahkan di Checkpoint 7
+# begitu provider (Gemini/OpenAI/dst) diputuskan.
