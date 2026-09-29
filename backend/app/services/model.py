@@ -11,9 +11,9 @@ from pydantic import BaseModel
 
 from app.core.config import settings
 
-# Gemini 2.5 ditolak untuk key ini; 3.6/3.8 sedang 503 saat diuji.
-# Gemini 3.5 Flash berhasil dengan skema keluaran yang sama.
-MODEL_NAME = "gemini-3.5-flash"
+# 3.5 Flash mendapat 503 saat permintaan tinggi; 3.1 Flash-Lite lolos uji
+# foto banjir dan skema keluaran yang sama pada lingkungan demo.
+MODEL_NAME = "gemini-3.1-flash-lite"
 TIMEOUT_MS = 30_000  # PRD §5: putuskan sekitar 30 detik dengan galat yang jelas.
 
 
@@ -93,6 +93,7 @@ def analyze_photo(photo_bytes: bytes, mime_type: str) -> AnalyzeResult:
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=AnalyzeResult,
+            thinking_config=types.ThinkingConfig(thinking_level="minimal"),
         ),
     )
     return AnalyzeResult.model_validate_json(response.text)
