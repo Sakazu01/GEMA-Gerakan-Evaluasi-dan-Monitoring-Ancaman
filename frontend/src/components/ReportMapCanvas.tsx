@@ -142,7 +142,7 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
       onPickRef.current({
         lat: event.latlng.lat,
         lng: event.latlng.lng,
-        label: "Titik pilihan di peta (DEMO)",
+        label: "Titik pilihan di peta",
         source: "map",
       });
     });
@@ -159,6 +159,12 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
       mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (location?.source === "device") {
+      mapRef.current?.flyTo([location.lat, location.lng], 14);
+    }
+  }, [location]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -224,7 +230,7 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
       ref={containerRef}
       className={fullBleed ? "h-full w-full" : "h-96 w-full rounded-lg border border-slate-300"}
       role="img"
-      aria-label="Peta laporan warga di Bandung. Daftar laporan lengkap tersedia tepat setelah peta."
+      aria-label="Peta laporan warga. Daftar laporan lengkap tersedia tepat setelah peta."
     />
   );
 });

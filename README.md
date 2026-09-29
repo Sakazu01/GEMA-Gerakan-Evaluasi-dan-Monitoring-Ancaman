@@ -39,3 +39,5 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 Buka http://localhost:8000/health untuk cek server hidup.
+
+Sebelum menguji unggah laporan, jalankan file di `backend/migrations/` lewat Supabase SQL Editor secara berurutan: `001_initial.sql`, `002_severity_kritis.sql`, lalu `003_vote_functions.sql`. Untuk database yang sudah ada, jalankan migrasi yang belum diterapkan. Migrasi `002` wajib agar hasil AI dengan severity `kritis` bisa disimpan.

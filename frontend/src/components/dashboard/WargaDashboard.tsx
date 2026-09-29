@@ -13,7 +13,6 @@ import { ZoneCards } from "@/components/ZoneCards";
 import { severityMap, type MapLocation } from "@/lib/demo-reports";
 import { useDemoReports } from "@/lib/demo-report-context";
 import { apiFetch } from "@/lib/api-client";
-import { requestDeviceLocation } from "@/lib/geolocation";
 import type { Report } from "@/types/report";
 import type { ReportMapHandle } from "@/components/ReportMapCanvas";
 
@@ -25,9 +24,11 @@ interface NearbyResponse {
 
 export function WargaDashboard({
   location,
+  locationMessage,
   onLocationChange,
 }: {
   location: MapLocation | null;
+  locationMessage: string;
   onLocationChange: (location: MapLocation) => void;
 }) {
   const { reports, loading, error } = useDemoReports();
@@ -64,7 +65,7 @@ export function WargaDashboard({
     apiFetch<NearbyResponse>("/api/nearby", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lat: location.lat, lng: location.lng }),
+      body: JSON.stringify({ lat: location.lat, lng: location.lng, accuracy_m: location.accuracy_m ?? null }),
     })
       .then((res) => {
         if (cancelled) return;
@@ -133,6 +134,11 @@ export function WargaDashboard({
           </p>
         )}
 
+        {locationMessage && (
+          <p role="status" className="absolute left-4 right-16 top-[210px] z-10 rounded-lg bg-white/90 px-3 py-2 text-sm text-slate-800">
+            {locationMessage}
+          </p>
+        )}
         <p className="absolute left-4 top-[170px] z-10 text-xs leading-tight text-white drop-shadow">
           Lat: {location ? location.lat.toFixed(4) : "–"}
           <br />
@@ -151,17 +157,6 @@ export function WargaDashboard({
               <SquareMinus aria-hidden="true" size={20} />
             </button>
           </div>
-          <button
-            type="button"
-            aria-label="Gunakan lokasi saya"
-            onClick={() => requestDeviceLocation(onLocationChange, setSearchMessage)}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[#CECECE] bg-white/50 text-slate-800 backdrop-blur-sm hover:bg-white/60"
-          >
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M10 1v3M10 16v3M1 10h3M16 10h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </button>
           <Link
             href="/hotline"
             aria-label="Bantuan dan hotline"
@@ -201,7 +196,7 @@ export function WargaDashboard({
         </nav>
 
         <Card>
-          <LocationPicker location={location} onChange={onLocationChange} />
+          <LocationPicker location={location} onChange={onLocationChange} message={locationMessage} />
         </Card>
 
         {loading && <p role="status" className="text-slate-700">Memuat laporan…</p>}
@@ -211,7 +206,7 @@ export function WargaDashboard({
           </p>
         )}
 
-        {location && !nearest && (
+        {location && !nearest && (location.accuracy_m == null || location.accuracy_m <= 100) && (
           <p role="status" className="rounded-lg border border-slate-300 bg-slate-50 p-4 text-slate-800">
             Tidak ada laporan aktif dalam radius perhatian yang dikonfigurasi dari titik pilihan saat ini.
             Kondisi di lapangan tetap perlu diperiksa dari sumber resmi.

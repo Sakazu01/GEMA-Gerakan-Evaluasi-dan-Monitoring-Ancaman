@@ -44,6 +44,7 @@ export function ZoneCards({
             <p className="mt-1">Laporan {disasterNames[report.type].toLowerCase()} berkeparahan {report.severity} sekitar {Math.round(distance_m)} m dari titik pilihan.</p>
             <p className="mt-2">{tips[report.type]}</p>
             <p className="mt-2 font-medium">Radius perhatian sementara {radiusKm} km ini berdasarkan laporan warga yang belum diverifikasi. Bukan batas bahaya resmi atau rute evakuasi.</p>
+            <Link href="/evakuasi" className="mt-2 mr-4 inline-flex min-h-11 items-center font-semibold underline">Baca panduan evakuasi</Link>
             <Link href="/hotline" className="mt-2 inline-flex min-h-11 items-center font-semibold underline">Lihat hotline darurat</Link>
           </div>
         )}

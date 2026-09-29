@@ -206,7 +206,7 @@ export const demoReports: Report[] = [
   },
 ];
 
-export type MapLocation = { lat: number; lng: number; label: string; source?: LocationSource };
+export type MapLocation = { lat: number; lng: number; label: string; source?: LocationSource; accuracy_m?: number };
 
 export function isWarningZoneReport(report: Report, now = Date.now()) {
   if (report.status !== "active" || !severityMap[report.severity].warningRadiusM || !report.published_at) {

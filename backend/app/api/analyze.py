@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from app.deps.auth import require_user
@@ -5,6 +7,7 @@ from app.services import model as model_service
 from app.services import reports as reports_service
 
 router = APIRouter(tags=["analyze"])
+logger = logging.getLogger(__name__)
 
 MAX_BYTES = 3 * 1024 * 1024  # PRD §11: satu foto, maksimal 3 MB.
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
@@ -48,7 +51,11 @@ def analyze(photo: UploadFile, user_id: str = Depends(require_user)):
         validity = result.validity if result.validity != "relevant" else "uncertain"
         return {"validity": validity, "reason": result.reason_id[:120]}
 
-    draft_id = reports_service.create_draft(user_id, result, data, photo.content_type)
+    try:
+        draft_id = reports_service.create_draft(user_id, result, data, photo.content_type)
+    except Exception:
+        logger.exception("Gagal menyimpan draft hasil analisis")
+        raise HTTPException(503, "Analisis selesai, tetapi draf gagal disimpan. Hubungi pengelola.")
     return {
         "validity": "relevant",
         "draft_id": draft_id,

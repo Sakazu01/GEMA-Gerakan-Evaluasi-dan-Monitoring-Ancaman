@@ -100,7 +100,8 @@ def create_draft(author_id: str, result: AnalyzeResult, photo: bytes, mime: str)
     """Simpan foto + baris draft. Hanya dipanggil kalau AI bilang relevant (PRD §9.1)."""
     # Nama acak, bukan nama file pengguna (PRD §11).
     path = f"{author_id}/{uuid4()}.{_EXT[mime]}"
-    get_client().storage.from_(PHOTO_BUCKET).upload(
+    client = get_client()
+    client.storage.from_(PHOTO_BUCKET).upload(
         path, photo, {"content-type": mime}
     )
     row = {
@@ -113,7 +114,15 @@ def create_draft(author_id: str, result: AnalyzeResult, photo: bytes, mime: str)
         "photo_path": path,
         "is_demo": settings.demo_mode,
     }
-    res = get_client().table("reports").insert(row).execute()
+    try:
+        res = client.table("reports").insert(row).execute()
+    except Exception:
+        # Jangan tinggalkan foto yatim bila insert draft ditolak database.
+        try:
+            client.storage.from_(PHOTO_BUCKET).remove([path])
+        except Exception:
+            pass
+        raise
     return res.data[0]["id"]
 
 

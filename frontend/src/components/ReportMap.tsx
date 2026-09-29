@@ -27,7 +27,7 @@ export const ReportMap = forwardRef<ReportMapHandle, {
       <p className="mt-2 text-sm text-slate-600">
         Peta memerlukan koneksi internet untuk menampilkan ubin OpenStreetMap.
         {pickerOnly ? " Klik peta untuk memilih lokasi laporan secara manual." :
-          " Semua laporan juga tersedia di daftar teks di bawah. Klik peta untuk memilih lokasi demo secara manual."}
+          " Semua laporan juga tersedia di daftar teks di bawah. Klik peta untuk memilih titik secara manual."}
       </p>
     </div>
   );
