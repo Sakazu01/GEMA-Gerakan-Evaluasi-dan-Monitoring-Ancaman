@@ -52,8 +52,35 @@ body {
 }
 
 .gema-popup__header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
   padding: 8px 12px;
   font-size: 14px;
+}
+
+.gema-popup__actions {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.gema-popup__action {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.35);
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: flex;
+  height: 22px;
+  justify-content: center;
+  padding: 0;
+  width: 22px;
+}
+
+.gema-popup__action:hover {
+  background: rgba(255, 255, 255, 0.55);
 }
 
 .gema-popup__body {
