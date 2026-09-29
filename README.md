@@ -1,5 +1,17 @@
 # GEMA — Gerakan Evaluasi dan Monitoring Ancaman
 
+Platform pelaporan bencana berbasis foto dan AI untuk warga, dengan peta komunitas real-time dan dashboard pemantauan untuk pemerintah.
+
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?logo=supabase&logoColor=white)
+![Gemini AI](https://img.shields.io/badge/Gemini-AI-4285F4?logo=googlegemini&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 **Tim Labtek V Ijo Lumut Kya** — Institut Teknologi Bandung
 
 - Juan Oloando Simanungkalit
@@ -7,6 +19,21 @@
 - Naomi Azzahra
 - Wa Ode Amerta Lambelu Jamaluddin
 - Endda Tsa Azzahra Syaifur
+
+## Daftar Isi
+
+- [Demo](#demo)
+- [Tujuan](#tujuan)
+- [Struktur](#struktur)
+- [Prasyarat (Prerequisites)](#prasyarat-prerequisites)
+- [Cara menjalankan (How to build & run)](#cara-menjalankan-how-to-build--run)
+- [Dua tampilan peta](#dua-tampilan-peta)
+- [Notifikasi responder Telegram](#notifikasi-responder-telegram)
+- [Deploy](#deploy)
+
+## Demo
+
+Aplikasi sudah live (tidak perlu di-build untuk mencoba): **https://amusing-communication-production-abe3.up.railway.app/**
 
 ## Tujuan
 
@@ -19,7 +46,15 @@ frontend/   Next.js — UI, peta, form laporan
 backend/    FastAPI (Python) — semua endpoint API
 ```
 
-## Cara menjalankan
+## Prasyarat (Prerequisites)
+
+- Node.js 20 atau lebih baru, npm
+- Python 3.11 atau lebih baru, pip
+- Akun [Supabase](https://supabase.com) (Postgres + Storage) — untuk menjalankan sendiri, buat project baru dan jalankan migrasi di `backend/migrations/`
+- API key Gemini dari [Google AI Studio](https://aistudio.google.com/) untuk `MODEL_API_KEY`
+- (Opsional) Bot Telegram untuk fitur notifikasi responder — lihat bagian [Notifikasi responder Telegram](#notifikasi-responder-telegram)
+
+## Cara menjalankan (How to build & run)
 
 **Frontend:**
 ```bash
@@ -64,9 +99,11 @@ Uji manual: buka frontend sebagai warga, unggah foto dan terbitkan laporan, past
 
 ## Deploy
 
-Frontend ke [Vercel](https://vercel.com) (root directory `frontend/`), backend ke platform yang auto-detect Python (Render/Railway/Fly — `backend/Procfile` sudah cukup untuk itu). Checklist supaya kedua sisi benar-benar bisa saling bicara setelah deploy:
+Live saat ini: **frontend dan backend sama-sama di [Railway](https://railway.com)**, sebagai dua service terpisah dalam satu project (root directory `frontend/` dan `backend/`). `backend/Procfile` sudah cukup untuk Railway auto-detect Python; frontend cukup `npm run build` + `npm start` (Railway auto-detect Next.js). Vercel juga bisa dipakai untuk frontend (root directory `frontend/`) kalau lebih nyaman — langkahnya sama, tinggal ganti host di checklist di bawah.
 
-1. Di Vercel, set `NEXT_PUBLIC_API_URL` ke URL backend yang sudah live (bukan `localhost`).
-2. Di host backend, set `CORS_ORIGINS` ke URL frontend Vercel yang sudah live (bukan `localhost`) — request akan diblokir CORS kalau lupa ini.
+Checklist supaya kedua sisi benar-benar bisa saling bicara setelah deploy:
+
+1. Di host frontend, set `NEXT_PUBLIC_API_URL` ke URL backend yang sudah live (bukan `localhost`).
+2. Di host backend, set `CORS_ORIGINS` ke URL frontend yang sudah live (bukan `localhost`) — request akan diblokir CORS kalau lupa ini.
 3. Pastikan `DEMO_MODE=false` di `.env` backend produksi, supaya laporan yang benar-benar dikirim juri tidak ikut ditandai sebagai data contoh.
 4. Isi `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, dan `MODEL_API_KEY` di `.env` backend produksi (nilai yang sama seperti `backend/.env.example`).
