@@ -26,8 +26,8 @@ Backend dan frontend develop terpisah **berdasarkan bentuk JSON ini**, bukan ber
   "details": { "type": "flood", "water_depth": ">100cm", "current": "deras" },
   "location_label": "Sekitar Jl. Melati, RW 04",
   "location_source": "demo",
-  "public_lat": -6.9147,
-  "public_lng": 107.6098,
+  "public_lat": -6.915,
+  "public_lng": 107.61,
   "published_at": "2026-09-18T03:12:00Z",
   "created_at": "2026-09-18T03:10:00Z",
   "is_demo": true,
@@ -125,14 +125,12 @@ Batasan:
 ### A3 — Nearby + voting
 
 ```
-Baca PRD.md §9.2-9.4 (aturan area merah 300m, status bantuan, sanggahan) dan plan.md
-bagian "Kontrak API". Tugas kamu:
+**Update: bagian nearby SUDAH SELESAI** (rules.py haversine + radius per severity +
+POST /api/nearby, termasuk "kritis" 10km — lihat PRD.md §9.2). Sisa tahap ini cuma:
 
-1. Isi backend/app/services/rules.py — fungsi jarak Haversine.
-2. Ganti stub 501 di backend/app/api/nearby.py (POST /api/nearby): hitung in_red dari
-   lokasi yang dikirim di body (JANGAN disimpan ke database), pakai koordinat ASLI
-   laporan (bukan yang dibulatkan). Response sesuai contoh di plan.md.
-3. Ganti stub 501 di backend/app/api/votes.py (false-vote & help-vote): satu suara per
+Baca PRD.md §9.4 (aturan sanggahan) dan plan.md bagian "Kontrak API". Tugas kamu:
+
+1. Ganti stub 501 di backend/app/api/votes.py (false-vote & help-vote): satu suara per
    (report_id, voter_id), sanggahan ke-3 dari akun berbeda ubah status jadi
    disputed_hidden — ini HARUS satu transaksi SQL atomik (pakai fungsi Postgres/RPC),
    biar dua vote barengan gak bikin hitungan salah.
@@ -228,13 +226,19 @@ http://localhost:8000/health). Tugas kamu:
 
 1. Di frontend/src/lib/api-client.ts, pastikan NEXT_PUBLIC_API_URL nunjuk ke backend
    lokal (http://localhost:8000, dari frontend/.env.local).
-2. Ganti dummy data di WargaDashboard/PemerintahDashboard/ReportList/ReportMap dengan
+2. PENTING — buat id anonim per-browser: saat pertama kali dibuka, generate satu id
+   (crypto.randomUUID()) dan simpan di localStorage. Pakai id ini sebagai
+   "Authorization: Bearer <id>" di SETIAP request ke backend (analyze, reports, my-reports,
+   votes). Backend belum verifikasi JWT asli (lihat deps/auth.py) — token ini cuma dipakai
+   apa adanya sebagai user_id, jadi harus konsisten dari browser yang sama tiap kali,
+   supaya /track (my-reports) benar-benar nunjukin laporan yang baru dibuat orang itu.
+3. Ganti dummy data di WargaDashboard/PemerintahDashboard/ReportList/ReportMap dengan
    fetch asli ke GET /api/reports (dan GET /api/reports/{id} di halaman detail) lewat
    apiFetch. JANGAN ubah tampilan/komponen, cuma ganti sumber datanya.
-3. Ganti fungsi mock di ReportForm dengan panggilan asli ke POST /api/analyze lalu
+4. Ganti fungsi mock di ReportForm dengan panggilan asli ke POST /api/analyze lalu
    POST /api/reports.
-4. Test end-to-end: upload 1 foto asli, submit, cek laporan muncul di peta+daftar
-   setelah refresh.
+5. Test end-to-end: upload 1 foto asli, submit, cek laporan muncul di peta+daftar
+   setelah refresh, dan muncul juga di /track.
 
 Batasan:
 - MVP demo — kalau ada mismatch bentuk data antara backend dan frontend, PERBAIKI
@@ -257,11 +261,21 @@ Baca PRD.md §6 (arsitektur & deploy). Tugas kamu:
    backend/.env.example dan frontend/.env.example — JANGAN commit .env asli ke git.
 4. Update CORS_ORIGINS di backend biar include domain frontend yang di-deploy.
    Update NEXT_PUBLIC_API_URL di frontend biar nunjuk ke URL backend yang di-deploy.
-5. Test alur lengkap dari URL publik (bukan localhost).
+5. Set DEMO_MODE=true di environment backend yang di-deploy — supaya SEMUA laporan yang
+   masuk lewat URL publik (termasuk hasil coba-coba juri, bukan cuma data seed) otomatis
+   ke-tag is_demo=true. Jangan sampai laporan hasil test juri kelihatan seperti laporan
+   bencana sungguhan.
+6. Test alur lengkap dari URL publik (bukan localhost).
 
 Batasan:
 - Satu deployment aja cukup buat demo juri — gak perlu staging/prod terpisah, gak
   perlu custom domain.
 - Setelah selesai: STOP. Jangan push kode lain di luar yang diminta di sini. Laporkan
   URL yang jadi dan tunggu saya cek sebelum dianggap kelar.
+
+## Setelah hari penjurian selesai
+
+Bersihkan data uji coba juri: hapus semua baris `reports` dengan `is_demo=true` di
+Supabase (SQL Editor: `delete from reports where is_demo = true;` — false_votes/help_votes
+ikut terhapus otomatis karena `on delete cascade`).
 ```

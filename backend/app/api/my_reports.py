@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
+
+from app.deps.auth import require_user
+from app.schemas.report import ReportOut
+from app.services import reports as reports_service
 
 router = APIRouter(tags=["my-reports"])
 
 
-@router.get("/my-reports")
-async def list_my_reports():
-    # TODO Checkpoint 6: laporan milik pemilik JWT, termasuk yang disembunyikan.
-    raise HTTPException(status_code=501, detail="Belum diimplementasikan")
+@router.get("/my-reports", response_model=list[ReportOut])
+def list_my_reports(user_id: str = Depends(require_user)):
+    return reports_service.list_by_author(user_id)
