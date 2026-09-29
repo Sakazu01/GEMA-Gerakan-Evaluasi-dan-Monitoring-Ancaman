@@ -92,7 +92,7 @@ export function PemerintahDashboard() {
 
   return (
     <DashboardLayout
-      title="GEMA — Dashboard Pemerintah"
+      title="Dashboard Pemerintah"
       description="Ringkasan laporan warga untuk pemantauan. Informasi ini belum diverifikasi."
     >
       {/* ponytail: role switcher ini kosmetik (localStorage), belum ada proteksi akses nyata di backend.

@@ -14,8 +14,6 @@ import {
 } from "@/lib/demo-reports";
 import type { Report } from "@/types/report";
 
-const initials = { flood: "B", landslide: "L", fire: "K" };
-
 export type MapMode = "ai" | "density";
 export type DensityPoint = { lat: number; lng: number; count: number };
 
@@ -246,7 +244,7 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
 
         const icon = L.divIcon({
           className: "gema-report-marker",
-          html: `<span class="gema-report-marker__inner" style="background:${style.color};color:${style.textColor}" aria-hidden="true">${initials[report.type]}</span>`,
+          html: `<span class="gema-report-marker__inner" style="background:${style.color}" aria-hidden="true"><img src="${disasterBadge[report.type].icon}" alt="" width="18" height="18" /></span>`,
           iconSize: [32, 32],
           iconAnchor: [16, 16],
         });

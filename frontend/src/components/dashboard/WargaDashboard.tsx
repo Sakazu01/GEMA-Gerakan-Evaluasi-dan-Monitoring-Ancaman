@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { AlertTriangle, Layers, LocateFixed, MessageCircleQuestion, Plus, Search, SquareMinus, SquarePlus, X } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
@@ -307,20 +308,11 @@ export function WargaDashboard({
         </div>
 
         <div className="space-y-5 px-4 pb-8">
-          <h1 className="text-2xl font-bold text-slate-950">GEMA — Beranda Warga</h1>
+          <div>
+            <Image src="/gema_green.svg" alt="GEMA" width={80} height={24} />
+            <h1 className="mt-2 text-2xl font-bold text-slate-950">Beranda Warga</h1>
+          </div>
           <p className="text-slate-700">Laporan warga di sekitar Bandung. Informasi ini belum diverifikasi dan bukan peringatan resmi.</p>
-
-          <nav aria-label="Aksi utama" className="flex flex-wrap gap-3">
-            <Link href="/report/new" tabIndex={legendOpen ? 0 : -1} className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 font-semibold text-white hover:bg-blue-800">
-              Buat laporan
-            </Link>
-            <Link href="/track" tabIndex={legendOpen ? 0 : -1} className="inline-flex min-h-11 items-center rounded-lg border border-slate-400 px-4 font-semibold text-slate-900 hover:bg-slate-100">
-              Lacak tanggapan
-            </Link>
-            <Link href="/hotline" tabIndex={legendOpen ? 0 : -1} className="inline-flex min-h-11 items-center rounded-lg border border-slate-400 px-4 font-semibold text-slate-900 hover:bg-slate-100">
-              Hotline
-            </Link>
-          </nav>
 
           {loading && <p role="status" className="text-slate-700">Memuat laporan…</p>}
           {error && (
