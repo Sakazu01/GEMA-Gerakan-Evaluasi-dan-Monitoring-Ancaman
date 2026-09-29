@@ -1,7 +1,7 @@
 # PRD MVP — GEMA
 
 **Gerakan Evaluasi dan Monitoring Ancaman**
-**Versi:** 2.2 — adaptasi implementasi dari PRD asli v2.1 (17 September 2026)
+**Versi:** 2.3 — adaptasi implementasi dari PRD asli v2.1 (17 September 2026)
 **Konteks:** Hack Day IFest UNPAD 2026, subtema *Accessibility*
 **Status:** dokumen kerja tim — diupdate selama development, bukan spesifikasi beku
 
@@ -21,7 +21,7 @@
 | Deploy | Opsional, localhost cukup | **Akan di-deploy** (Vercel utk frontend + Render/Railway/Fly utk backend) supaya juri bisa akses sendiri | Permintaan tim: juri harus bisa coba alurnya sendiri, bukan cuma nonton video |
 | Kriteria AI tambahan | Severity cuma "penilaian visual sementara" | **Eksplisit**: `severity="tinggi"` = perlu evakuasi/respons SEGERA (mis. banjir dalam+arus deras), beda dari genangan biasa (`rendah`/`sedang`) | Permintaan tim — pastikan sistem bisa bedain kejadian mendesak vs tidak, bukan cuma "ada air di foto" |
 
-**Yang TIDAK berubah** (masih ikut PRD asli v2.1 apa adanya): cakupan bencana (banjir/longsor/kebakaran), bahasa produk (semua UI bahasa Indonesia), aturan bisnis (§9 di bawah — ambang 300m, ambang sanggahan 3 akun, ambang bantuan 2 suara), prinsip aksesibilitas, larangan klaim berlebihan ("belum diverifikasi", bukan "terverifikasi"), dan seluruh 14 skenario penerimaan (AC-01 s.d. AC-14).
+**Yang TIDAK berubah** (masih ikut PRD asli v2.1 apa adanya): cakupan bencana (banjir/longsor/kebakaran), bahasa produk (semua UI bahasa Indonesia), aturan bisnis (§9 di bawah — radius peringatan per severity §9.2, ambang sanggahan 3 akun, ambang bantuan 2 suara), prinsip aksesibilitas, larangan klaim berlebihan ("belum diverifikasi", bukan "terverifikasi"), dan seluruh 14 skenario penerimaan (AC-01 s.d. AC-14).
 
 **Disclaimer:** ini MVP buat demo hackathon 1 hari, bukan produk produksi. Struktur dibuat minimal dan bertahap (lihat checkpoint di `.claude/plans/` kalau ada, atau `docs/PROGRESS.md`) — jangan tambah kompleksitas yang belum dibutuhkan checkpoint yang sedang dikerjakan.
 
@@ -41,7 +41,7 @@ GEMA membantu warga **melaporkan indikasi bencana dari foto**, melihat **laporan
 ## 3. Ruang lingkup
 
 ### P0 — wajib selesai
-Sama seperti PRD asli §4: beranda peta sebaran (marker + heatmap + area merah + daftar), buat laporan (foto→AI→tinjau→submit), filter gambar tidak relevan, area perhatian (dua kartu dalam radius 300m), tips evakuasi statis, lacak tanggapan, hotline, sanggah laporan (3 akun → disembunyikan).
+Sama seperti PRD asli §4: beranda peta sebaran (marker + heatmap + area merah + daftar), buat laporan (foto→AI→tinjau→submit), filter gambar tidak relevan, area perhatian (dua kartu, radius mengikuti tingkat keparahan — §9.2), tips evakuasi statis, lacak tanggapan, hotline, sanggah laporan (3 akun → disembunyikan).
 
 **Tambahan v2.2, di luar P0 PRD asli tapi sudah disepakati tim:** role switcher Warga/Pemerintah + dashboard Pemerintah read-only (statistik + tabel semua laporan). Ini kosmetik/demo, bukan fitur produksi — lihat §0 tabel di atas.
 
@@ -67,12 +67,23 @@ Ikuti PRD asli §6 dan §7 secara substansi (foto→lokasi→analisis→tinjau�
 ```text
 validity: relevant | invalid | uncertain
 disaster_type: flood | landslide | fire | null
-severity: rendah | sedang | tinggi | null
+severity: rendah | sedang | tinggi | kritis | null
 summary_id: string <= 240 karakter | null
 reason_id: string <= 120 karakter
 ```
 
-**Kriteria `severity` (ditegaskan v2.2):** `tinggi` berarti **perlu evakuasi/respons segera** — misalnya banjir dengan kedalaman >100cm dan arus deras, longsor dengan material besar bergerak, atau kebakaran dengan jarak pandang sangat rendah karena asap tebal. Ini **beda** dari kejadian yang cuma genangan/gejala ringan (`rendah`/`sedang`), meski sama-sama "ada air/asap di foto". Prompt model harus dikalibrasi ke ambang bahaya itu, dikombinasikan dengan input tambahan warga (`water_depth`, `current`, dll — lihat §11 data model). `severity=tinggi` + `status=active` + umur <24 jam adalah satu-satunya pemicu area perhatian merah (§9.2).
+**Kriteria `severity` (v2.3 — 4 tingkat, bukan 3):** setiap tingkat sekarang punya radius peringatan sendiri (lihat §9.2), bukan cuma satu ambang "tinggi" seperti versi sebelumnya:
+
+| Tingkat | Contoh visual | Radius peringatan |
+|---|---|---|
+| `rendah` | Genangan dangkal tenang, sisa material kecil | Tidak ada — tidak pernah memicu peringatan |
+| `sedang` | Kejadian jelas terlihat tapi tidak bahaya langsung | 1 km |
+| `tinggi` | Bahaya besar butuh evakuasi SEGERA, cakupan lokal (satu jalan/bangunan) | 3 km |
+| `kritis` | Bahaya skala luas/regional (banyak rumah/jalan sekaligus) | 10 km |
+
+Prompt model harus dikalibrasi ke ambang ini, dikombinasikan dengan input tambahan warga (`water_depth`, `current`, dll — lihat §11 data model), dan **bila ragu pilih tingkat yang lebih rendah** — jangan melebih-lebihkan skala. `severity != rendah` + `status=active` + umur <24 jam adalah pemicu area perhatian (§9.2); radiusnya mengikuti tabel di atas, bukan angka tunggal 300m lagi.
+
+**Di luar cakupan backend saat ini:** proposal awal tim juga punya kolom "Target Eskalasi Instansi" (mis. BASARNAS) per tingkat keparahan. Ini **TIDAK diimplementasikan sebagai notifikasi/integrasi nyata** — konsisten dengan prinsip §4 "tidak menghubungi instansi". Kalau dipakai, itu murni teks informasi di frontend (roadmap Track B), bukan logika backend.
 
 Server tetap wajib validasi enum/panjang/kombinasi field — jangan percaya skor kepercayaan model sebagai fakta. Foto lama/dari internet/sintetis bisa lolos; sanggahan warga mengurangi risiko, bukan menyelesaikannya.
 
@@ -143,8 +154,8 @@ Boundary otomatis dari folder — kecil kemungkinan bentrok merge selama masing-
 ### 9.1 Siklus laporan
 `draft` (AI relevan) → `active` (pemilik submit lokasi+isi) → `disputed_hidden` (3 sanggahan unik) → `active` lagi (pemulihan manual lewat dashboard database). Foto `invalid`/`uncertain` tidak pernah jadi `draft`.
 
-### 9.2 Area perhatian merah
-Hanya laporan `active`, `severity=tinggi`, umur ≤24 jam. Jarak Haversine dari lokasi pengguna ke koordinat **asli** (bukan yang dibulatkan). `in_red=true` bila jarak ≤300m. Lokasi pengguna dikirim di body request, tidak disimpan. Kalau lokasi belum akurat (>100m), minta pilih manual.
+### 9.2 Area perhatian
+Hanya laporan `active`, `severity != rendah`, umur ≤24 jam. Jarak Haversine dari lokasi pengguna ke koordinat **asli** (bukan yang dibulatkan). `in_red=true` bila jarak berada dalam radius tingkat keparahan laporan itu sendiri: `sedang`=1km, `tinggi`=3km, `kritis`=10km (§5). Kalau ada beberapa laporan yang jaraknya masuk radius masing-masing, yang **paling dekat** menang (bukan yang severity-nya tertinggi). Lokasi pengguna dikirim di body request, tidak disimpan. Kalau lokasi belum akurat (>100m), minta pilih manual — `in_red` selalu `false` pada kondisi ini.
 
 ### 9.3 Status bantuan
 `help_votes` satu nilai per `(report_id, voter_id)`. `seen≥2` dan `seen>not_seen` → "Bantuan dilaporkan terlihat oleh warga". `not_seen≥1` tanpa itu → "Ada warga yang melaporkan bantuan belum terlihat". Kurang dari itu → "Belum ada konfirmasi warga yang cukup".
@@ -186,9 +197,11 @@ Tambahan AC untuk v2.2:
 
 | ID | Skenario | Hasil wajib |
 |---|---|---|
-| AC-15 | Foto banjir dalam (>100cm) + arus deras | `severity=tinggi`, area perhatian merah bisa terpicu (kalau `active`+<24jam+≤300m) |
-| AC-16 | Foto genangan dangkal (<30cm) + tenang | `severity=rendah`/`sedang`, **tidak** memicu area perhatian merah meski jaraknya dekat |
+| AC-15 | Foto banjir dalam (>100cm) + arus deras, cakupan lokal | `severity=tinggi`, area perhatian bisa terpicu dalam radius 3km |
+| AC-16 | Foto genangan dangkal (<30cm) + tenang | `severity=rendah`, **tidak pernah** memicu area perhatian meski jaraknya dekat |
 | AC-17 | Toggle role switcher Warga↔Pemerintah | Dashboard yang dirender berubah instan, tidak reload halaman, state peta lain tidak hilang |
+| AC-18 | Foto bencana skala luas (banyak rumah/jalan sekaligus) | `severity=kritis`, area perhatian terpicu sampai radius 10km |
+| AC-19 | Pengguna 5km dari laporan `tinggi` (radius 3km) tapi 5km dari laporan `kritis` (radius 10km) | Tidak terpicu oleh yang `tinggi`, tapi terpicu oleh yang `kritis` |
 
 ## 14. Urutan demo ke juri (dari PRD asli §12, ditambah role switcher)
 

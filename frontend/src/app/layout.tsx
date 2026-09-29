@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { RoleProvider } from "@/lib/role-context";
+import { DemoReportProvider } from "@/lib/demo-report-context";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 
 const geistSans = Geist({
@@ -27,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <RoleProvider>
-          {children}
+          <DemoReportProvider>{children}</DemoReportProvider>
           <RoleSwitcher />
         </RoleProvider>
       </body>
