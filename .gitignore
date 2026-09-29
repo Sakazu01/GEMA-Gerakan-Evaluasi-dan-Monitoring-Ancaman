@@ -37,6 +37,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# scratch testing (foto uji + hasil AI sekali pakai, bukan test suite permanen)
+backend/test/
+
 # env files (each project loads its own; never commit real values)
 .env
 .env.local

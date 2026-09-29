@@ -1,9 +1,59 @@
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+
+from app.deps.auth import require_user
+from app.services import model as model_service
+from app.services import reports as reports_service
 
 router = APIRouter(tags=["analyze"])
 
+MAX_BYTES = 3 * 1024 * 1024  # PRD §11: satu foto, maksimal 3 MB.
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
+# Tanda tangan byte, biar tidak cuma percaya Content-Type dari klien.
+_MAGIC = {
+    "image/jpeg": lambda b: b[:3] == b"\xff\xd8\xff",
+    "image/png": lambda b: b[:8] == b"\x89PNG\r\n\x1a\n",
+    "image/webp": lambda b: b[:4] == b"RIFF" and b[8:12] == b"WEBP",
+}
+
 
 @router.post("/analyze")
-async def analyze(photo: UploadFile):
-    # TODO Checkpoint 7: validasi MIME/size lalu panggil app.services.model.analyze_photo.
-    raise HTTPException(status_code=501, detail="Belum diimplementasikan")
+def analyze(photo: UploadFile, user_id: str = Depends(require_user)):
+    if photo.content_type not in ALLOWED_MIME:
+        raise HTTPException(400, "Format foto harus JPEG, PNG, atau WebP.")
+
+    data = photo.file.read()
+    if not data:
+        raise HTTPException(400, "Berkas foto kosong.")
+    if len(data) > MAX_BYTES:
+        raise HTTPException(413, "Ukuran foto melebihi 3 MB.")
+    if not _MAGIC[photo.content_type](data):
+        raise HTTPException(400, "Isi berkas tidak cocok dengan format yang diklaim.")
+
+    try:
+        result = model_service.analyze_photo(data, photo.content_type)
+    except Exception:
+        # Jangan bocorkan detail/prompt ke browser (PRD §10).
+        raise HTTPException(503, "Analisis belum tersedia. Coba lagi nanti.")
+
+    # Server tidak percaya begitu saja keluaran model (PRD §5).
+    relevan = (
+        result.validity == "relevant"
+        and result.disaster_type in {"flood", "landslide", "fire"}
+        and result.severity in {"rendah", "sedang", "tinggi", "kritis"}
+        and result.summary_id
+        and len(result.summary_id) <= 240
+    )
+    if not relevan:
+        # Tanpa ringkasan, tanpa draft, tanpa foto tersimpan (PRD §9.1).
+        validity = result.validity if result.validity != "relevant" else "uncertain"
+        return {"validity": validity, "reason": result.reason_id[:120]}
+
+    draft_id = reports_service.create_draft(user_id, result, data, photo.content_type)
+    return {
+        "validity": "relevant",
+        "draft_id": draft_id,
+        "type": result.disaster_type,
+        "severity": result.severity,
+        "summary": result.summary_id,
+        "reason": result.reason_id[:120],
+    }
