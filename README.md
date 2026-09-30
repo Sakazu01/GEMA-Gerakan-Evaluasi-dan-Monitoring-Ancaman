@@ -37,7 +37,7 @@ Aplikasi sudah live (tidak perlu di-build untuk mencoba): **https://amusing-comm
 
 ## Tujuan
 
-Aplikasi web yang membantu warga melaporkan indikasi bencana (banjir, tanah longsor, kebakaran) dari foto, melihat laporan komunitas lewat peta dan daftar, membaca panduan keselamatan di area berisiko, dan memberi konfirmasi soal kedatangan bantuan. Lihat [`PRD.md`](./PRD.md) untuk spesifikasi lengkap.
+Aplikasi web yang membantu warga melaporkan indikasi bencana (banjir, tanah longsor, kebakaran) dari foto, melihat laporan komunitas lewat peta dan daftar, membaca panduan keselamatan di area berisiko, dan memberi konfirmasi soal kedatangan bantuan.
 
 ## Struktur
 
