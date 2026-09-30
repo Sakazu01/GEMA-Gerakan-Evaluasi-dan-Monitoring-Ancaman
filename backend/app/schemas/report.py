@@ -47,8 +47,8 @@ class HelpStatus(str, Enum):
 
 
 class ReportOut(BaseModel):
-    """Proyeksi publik laporan. Bentuk JSON-nya dikunci di plan.md ("Kontrak API") dan
-    kembar dengan frontend/src/types/report.ts — jangan ubah tanpa koordinasi tim."""
+    """Proyeksi publik laporan. Bentuknya kembar dengan frontend/src/types/report.ts —
+    jangan ubah salah satu tanpa koordinasi tim."""
 
     id: str
     status: ReportStatus
