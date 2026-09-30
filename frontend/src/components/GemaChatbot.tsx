@@ -69,7 +69,7 @@ export function GemaChatbot() {
     return (
       <button type="button" onClick={() => setOpen(true)}
         aria-label="Buka GEMA AI" aria-haspopup="dialog"
-        className="fixed right-4 bottom-20 z-[60] flex h-14 w-14 items-center justify-center rounded-full border border-[#0D5D3A]/20 bg-white shadow-lg hover:bg-slate-50">
+        className="fixed right-4 bottom-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full border border-[#0D5D3A]/20 bg-white shadow-lg hover:bg-slate-50">
         <Image src="/G.svg" alt="" width={28} height={28} />
       </button>
     );
@@ -78,7 +78,7 @@ export function GemaChatbot() {
   return (
     <section role="dialog" aria-label="GEMA AI" aria-modal="false"
       onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}
-      className="fixed right-4 bottom-20 z-[60] flex h-[min(620px,calc(100dvh-112px))] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      className="fixed right-4 bottom-4 z-[60] flex h-[min(620px,calc(100dvh-48px))] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
       <header className="flex items-center gap-3 bg-[#0D5D3A] px-4 py-3 text-white">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white">
           <Image src="/G.svg" alt="" width={25} height={25} />
