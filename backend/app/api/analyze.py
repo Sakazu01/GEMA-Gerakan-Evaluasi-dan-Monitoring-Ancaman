@@ -9,7 +9,7 @@ from app.services import reports as reports_service
 router = APIRouter(tags=["analyze"])
 logger = logging.getLogger(__name__)
 
-MAX_BYTES = 3 * 1024 * 1024  # PRD §11: satu foto, maksimal 3 MB.
+MAX_BYTES = 10 * 1024 * 1024  # satu foto, maksimal 10 MB.
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp"}
 # Tanda tangan byte, biar tidak cuma percaya Content-Type dari klien.
 _MAGIC = {
@@ -28,7 +28,7 @@ def analyze(photo: UploadFile, user_id: str = Depends(require_user)):
     if not data:
         raise HTTPException(400, "Berkas foto kosong.")
     if len(data) > MAX_BYTES:
-        raise HTTPException(413, "Ukuran foto melebihi 3 MB.")
+        raise HTTPException(413, "Ukuran foto melebihi 10 MB.")
     if not _MAGIC[photo.content_type](data):
         raise HTTPException(400, "Isi berkas tidak cocok dengan format yang diklaim.")
 
