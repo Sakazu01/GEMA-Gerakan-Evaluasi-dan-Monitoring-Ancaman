@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Camera, ChevronLeft, Loader2 } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
@@ -35,13 +35,21 @@ export function ReportForm() {
   const [current, setCurrent] = useState<FloodDetails["current"]>(null);
   const [coveredArea, setCoveredArea] = useState<number | null>(null);
   const [visibility, setVisibility] = useState<FireDetails["visibility"]>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const pickedManually = useRef(false);
   const requestedLocation = useRef(false);
 
   useEffect(() => () => {
     if (photoUrl) URL.revokeObjectURL(photoUrl);
   }, [photoUrl]);
+
+  // Matikan kamera saat komponen dilepas, biar lampu kamera perangkat tidak nyala terus.
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   useEffect(() => {
     if (requestedLocation.current) return;
@@ -63,14 +71,9 @@ export function ReportForm() {
     setLocationMessage("");
   }
 
-  function choosePhoto(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    event.target.value = "";
+  function acceptPhoto(file: File) {
     setFileError("");
     setError("");
-    if (!file) return;
-    setPhoto(null);
-    setPhotoUrl(null);
     setAnalysis(null);
     if (!ALLOWED_TYPES.has(file.type)) {
       setFileError("Pilih foto JPEG, PNG, atau WebP.");
@@ -82,6 +85,53 @@ export function ReportForm() {
     }
     setPhoto(file);
     setPhotoUrl(URL.createObjectURL(file));
+  }
+
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraOn(false);
+  }
+
+  async function startCamera() {
+    setCameraError("");
+    setFileError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setCameraOn(true);
+    } catch {
+      setCameraError("Tidak dapat mengakses kamera. Pastikan izin kamera diberikan pada browser ini.");
+    }
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (blob) acceptPhoto(new File([blob], `laporan-${Date.now()}.jpg`, { type: "image/jpeg" }));
+    }, "image/jpeg", 0.9);
+    stopCamera();
+  }
+
+  function handleCameraButtonClick() {
+    if (cameraOn) {
+      capturePhoto();
+      return;
+    }
+    if (photoUrl) {
+      URL.revokeObjectURL(photoUrl);
+      setPhoto(null);
+      setPhotoUrl(null);
+    }
+    void startCamera();
   }
 
   async function analyzePhoto() {
@@ -167,20 +217,22 @@ export function ReportForm() {
     return (
       <div className="flex min-h-dvh flex-col bg-[#0D5D3A]">
         <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
-        <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
-          onChange={choosePhoto} className="hidden" />
         <div className="relative flex-1">
-          {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- pratinjau file lokal, bukan aset statis.
-            <img src={photoUrl} alt="Pratinjau foto laporan" className="absolute inset-0 h-full w-full object-cover" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#0D5D3A]">
-              <p className="px-8 text-center text-white/80">Ketuk tombol di bawah untuk mengambil foto kejadian.</p>
-            </div>
+          <video ref={videoRef} autoPlay playsInline muted
+            className={`absolute inset-0 h-full w-full object-cover ${cameraOn ? "" : "hidden"}`} />
+          {!cameraOn && (
+            photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- pratinjau file lokal, bukan aset statis.
+              <img src={photoUrl} alt="Pratinjau foto laporan" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-[#0D5D3A]">
+                <p className="px-8 text-center text-white/80">Ketuk tombol di bawah untuk mengambil foto kejadian.</p>
+              </div>
+            )
           )}
-          {photoUrl && !analyzing && (
+          {cameraOn && (
             <p className="absolute left-0 right-0 top-3 bg-black/30 py-1 text-center text-sm text-white">
-              Pastikan kamera anda stabil
+              Pastikan kamera anda stabil, lalu ketuk tombol kamera untuk mengambil foto
             </p>
           )}
           {analyzing && (
@@ -191,14 +243,15 @@ export function ReportForm() {
             </div>
           )}
         </div>
+        {cameraError && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{cameraError}</p>}
         {fileError && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{fileError}</p>}
         {error && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{error}</p>}
         <div className="grid grid-cols-3 items-center gap-3 bg-[#0D5D3A] px-6 pt-6">
           <Link href="/" aria-label="Kembali ke beranda" className="flex min-h-11 min-w-11 items-center text-white">
             <ChevronLeft aria-hidden="true" size={28} />
           </Link>
-          <button type="button" disabled={analyzing} aria-label="Ambil foto"
-            onClick={() => cameraInputRef.current?.click()}
+          <button type="button" disabled={analyzing} aria-label={cameraOn ? "Ambil foto sekarang" : "Nyalakan kamera"}
+            onClick={handleCameraButtonClick}
             className="flex h-16 w-16 items-center justify-center justify-self-center rounded-full border-4 border-white/60 bg-white disabled:bg-slate-300">
             <Camera aria-hidden="true" className="text-[#0D5D3A]" size={26} />
           </button>
