@@ -1,4 +1,4 @@
-"""Baca laporan dari Supabase dan ubah jadi proyeksi publik (plan.md "Kontrak API")."""
+"""Baca laporan dari Supabase dan ubah jadi proyeksi publik (lihat ReportOut)."""
 
 from datetime import datetime, timedelta, timezone
 from typing import Any
