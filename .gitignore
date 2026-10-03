@@ -27,7 +27,7 @@ backend/.pytest_cache
 backend/.mypy_cache
 
 # --- lokal per-mesin (jangan dishare ke tim) ---
-.claude/
+.claude/settings.local.json
 
 # --- misc ---
 .DS_Store

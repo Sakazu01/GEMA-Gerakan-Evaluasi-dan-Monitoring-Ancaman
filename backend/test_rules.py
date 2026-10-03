@@ -16,7 +16,7 @@ def test_help_status_from_counts():
 
 
 def test_projeksi_publik():
-    """Baris DB (bentuk balikan PostgREST) -> kontrak publik ReportOut."""
+    """Baris DB (bentuk balikan PostgREST) -> kontrak publik di plan.md."""
     from app.services.reports import _to_public
 
     row = {
