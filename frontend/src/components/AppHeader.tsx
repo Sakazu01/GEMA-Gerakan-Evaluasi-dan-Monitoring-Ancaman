@@ -14,7 +14,7 @@ export function AppHeader({
   open, onMenuClick, center,
 }: { open: boolean; onMenuClick: () => void; center?: ReactNode }) {
   return (
-    <div className="px-3 pt-3">
+    <div className="sticky top-0 z-30 px-3 pt-3">
       <header className="flex min-h-11 items-center gap-3 rounded-2xl bg-gradient-to-r from-[#0D5D3A] to-[#0D5D3A]/85 px-4 py-3 shadow-lg backdrop-blur-sm">
         <Link href="/" aria-label="GEMA — kembali ke beranda" className="flex min-h-11 shrink-0 items-center">
           <Image src="/gema.svg" alt="GEMA" width={72} height={33} priority />

@@ -27,6 +27,17 @@
 .gema-button:disabled, .gema-button-secondary:disabled { opacity: .65; cursor: wait; }
 .gema-input { display: block; width: 100%; min-height: 44px; border: 1px solid var(--border-control); border-radius: 8px; padding: 8px 12px; background: white; color: var(--text-primary); }
 .gema-link { color: var(--brand-primary); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
+.gema-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }
+.gema-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 200px; max-width: 280px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.gema-field .gema-input { font-weight: 400; }
+.gema-segmented { display: inline-flex; border: 1px solid var(--brand-primary); border-radius: 8px; overflow: hidden; }
+.gema-segmented button { min-height: 44px; min-width: 88px; padding: 8px 20px; font-weight: 600; background: white; color: var(--brand-primary); cursor: pointer; }
+.gema-segmented button + button { border-left: 1px solid var(--brand-primary); }
+.gema-segmented button[aria-pressed="true"] { background: var(--brand-primary); color: white; }
+.gema-muted { color: var(--text-secondary); font-size: 14px; line-height: 20px; }
+.gema-card-title { font-size: 18px; line-height: 26px; font-weight: 600; color: var(--text-primary); }
+.leaflet-container { isolation: isolate; }
+.gema-map-frame { overflow: hidden; border-radius: 12px; border: 1px solid #cbd5e1; background: white; }
 .evidence-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 12px; font-size: 14px; font-weight: 600; }
 .evidence-unconfirmed { background: #f1f5f9; color: #334155; }
 .evidence-under_review { background: #fef3c7; color: #78350f; }

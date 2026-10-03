@@ -195,6 +195,8 @@ def save_analysis(report_id: str, author_id: str, result: AnalyzeResult | None) 
         "ai_summary":result.summary_id[:240] if relevant else None,
         "ai_reason":result.reason_id[:120] if result else None,"analysis_lease_until":None,
     }
+    if result:
+        patch["risk_flags"] = [f"ai_suspect_{flag}" for flag in result.authenticity_flags]
     rows = get_client().table("reports").update(patch).eq("id",report_id).eq("author_id",author_id).eq("status","draft").execute().data
     if not rows:
         raise ValueError("report_not_draft")

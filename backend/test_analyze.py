@@ -29,6 +29,18 @@ def test_insert_gagal_menghapus_foto():
     assert removed_paths == [uploaded_path]
 
 
+def test_petunjuk_keaslian_masuk_risk_flags():
+    from app.services.reports import save_analysis
+
+    client = MagicMock()
+    result = AnalyzeResult(validity="invalid", reason_id="Tangkapan layar.", authenticity_flags=["screenshot", "stock_or_news"])
+    with patch("app.services.reports.get_client", return_value=client):
+        save_analysis("11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", result)
+    patch_sent = client.table.return_value.update.call_args.args[0]
+    assert patch_sent["risk_flags"] == ["ai_suspect_screenshot", "ai_suspect_stock_or_news"]
+
+
 if __name__ == "__main__":
     test_insert_gagal_menghapus_foto()
+    test_petunjuk_keaslian_masuk_risk_flags()
     print("ok")
