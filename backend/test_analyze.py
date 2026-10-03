@@ -17,7 +17,7 @@ def test_insert_gagal_menghapus_foto():
         reason_id="Api terlihat di banyak titik.",
     )
 
-    with patch("app.services.reports.get_client", return_value=client):
+    with patch("app.services.reports.get_client", return_value=client), patch("app.services.reports.get_row", return_value=None):
         try:
             create_draft("11111111-1111-4111-8111-111111111111", result, b"photo", "image/jpeg")
             assert False, "Insert seharusnya gagal"

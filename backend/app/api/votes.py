@@ -1,10 +1,11 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.deps.auth import require_user
 from app.schemas.requests import FalseVoteRequest, HelpVoteRequest
 from app.services import reports as reports_service
+from app.services.quota import enforce_quota
 
 router = APIRouter(tags=["votes"])
 
@@ -21,7 +22,8 @@ _HELP_VOTE_STATUS = {
 
 
 @router.post("/reports/{report_id}/false-vote")
-def false_vote(report_id: UUID, req: FalseVoteRequest, user_id: str = Depends(require_user)):
+def false_vote(report_id: UUID, req: FalseVoteRequest, request: Request, user_id: str = Depends(require_user)):
+    enforce_quota(request, user_id, "abuse")
     try:
         return reports_service.cast_false_vote(str(report_id), user_id, req.reason)
     except reports_service.VoteError as e:
@@ -29,7 +31,8 @@ def false_vote(report_id: UUID, req: FalseVoteRequest, user_id: str = Depends(re
 
 
 @router.post("/reports/{report_id}/help-vote")
-def help_vote(report_id: UUID, req: HelpVoteRequest, user_id: str = Depends(require_user)):
+def help_vote(report_id: UUID, req: HelpVoteRequest, request: Request, user_id: str = Depends(require_user)):
+    enforce_quota(request, user_id, "observation")
     try:
         return reports_service.cast_help_vote(str(report_id), user_id, req.value)
     except reports_service.VoteError as e:

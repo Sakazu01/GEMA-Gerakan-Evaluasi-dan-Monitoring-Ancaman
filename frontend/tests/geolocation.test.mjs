@@ -9,7 +9,7 @@ test("koordinat dan akurasi perangkat diteruskan tanpa diganti lokasi demo", () 
     value: {
       geolocation: {
         getCurrentPosition(success) {
-          success({ coords: { latitude: -7.25, longitude: 112.75, accuracy: 250 } });
+          success({ timestamp: Date.UTC(2026,9,3,7), coords: { latitude: -7.25, longitude: 112.75, accuracy: 250 } });
         },
       },
     },
@@ -28,6 +28,7 @@ test("koordinat dan akurasi perangkat diteruskan tanpa diganti lokasi demo", () 
       label: "Lokasi perangkat (perkiraan)",
       source: "device",
       accuracy_m: 250,
+      measured_at: "2026-10-03T07:00:00.000Z",
     });
     assert.match(message, /250 m/);
   } finally {

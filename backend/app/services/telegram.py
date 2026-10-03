@@ -14,7 +14,9 @@ TYPE_NAMES = {"flood": "Banjir", "landslide": "Tanah longsor", "fire": "Kebakara
 
 
 class TelegramError(Exception):
-    pass
+    def __init__(self, message: str, ambiguous: bool = False):
+        self.ambiguous = ambiguous
+        super().__init__(message)
 
 
 def _call(method: str, payload: dict[str, Any]) -> Any:
@@ -40,7 +42,7 @@ def _call(method: str, payload: dict[str, Any]) -> Any:
     except (URLError, TimeoutError, ValueError) as error:
         # Exception urllib lain (mis. gagal konek/timeout) dapat mengandung URL (dan
         # token) di pesannya; jangan teruskan pesannya ke log, cukup jenis errornya.
-        raise TelegramError(f"{method} gagal ({type(error).__name__})") from None
+        raise TelegramError(f"{method} gagal ({type(error).__name__})", ambiguous=True) from None
     if not result.get("ok"):
         raise TelegramError(f"{method} ditolak Telegram ({result.get('error_code', 'unknown')}: {result.get('description', '-')})")
     return result["result"]
@@ -54,18 +56,20 @@ def _wib(value: str | datetime | None) -> str:
 
 
 def _message(row: dict[str, Any]) -> str:
+    reported_type = row.get("reported_type") or row.get("type")
     lines = [
-        "🚨 LAPORAN BENCANA BARU",
-        "Laporan warga — belum diverifikasi",
+        "LAPORAN WARGA UNTUK TRIASE",
+        "Status bukti: " + row.get("verification_status", "unconfirmed"),
         f"ID: {row['id']}",
         "",
-        f"Jenis bencana: {TYPE_NAMES.get(row['type'], row['type'])}",
-        f"Keparahan: {row['severity'].capitalize()}",
+        f"Jenis menurut pelapor: {TYPE_NAMES.get(reported_type, reported_type) or 'belum dinyatakan'}",
+        f"Indikasi visual AI: {row.get('severity') or 'belum tersedia'}",
         f"Lokasi: {row['location_label']}",
-        f"Waktu: {_wib(row['published_at'])}",
+        f"Diamati: {_wib(row.get('observed_at'))}",
+        f"Dikirim: {_wib(row.get('published_at'))}",
         "",
         "Analisis AI berdasarkan foto:",
-        row["ai_summary"],
+        row.get("ai_summary") or "Analisis belum tersedia; laporan perlu ditinjau.",
     ]
     if row.get("description"):
         lines += ["", "Keterangan warga:", row["description"]]
@@ -83,10 +87,10 @@ def notify_report(report_id: str) -> None:
         raise TelegramError("TELE_CHAT_ID belum diisi")
     result = (
         get_client().table("reports")
-        .select("id, status, type, severity, location_label, published_at, ai_summary, description, telegram_message_id")
+        .select("id,status,type,reported_type,severity,location_label,published_at,observed_at,verification_status,ai_summary,description,telegram_message_id,is_demo")
         .eq("id", report_id).limit(1).execute()
     )
-    if not result.data or result.data[0]["status"] != "active":
+    if not result.data or result.data[0]["status"] not in ("active", "held") or result.data[0].get("is_demo"):
         return
     row = result.data[0]
     if row.get("telegram_message_id"):
@@ -105,28 +109,7 @@ def notify_report(report_id: str) -> None:
     get_client().table("reports").update({
         "telegram_chat_id": str(sent["chat"]["id"]),
         "telegram_message_id": sent["message_id"],
-    }).eq("id", report_id).eq("status", "active").is_("telegram_message_id", "null").execute()
-
-
-def accept_report(report_id: str, chat_id: str, message_id: int, responder: str) -> tuple[dict[str, Any] | None, bool]:
-    """UPDATE bersyarat Postgres: hanya satu callback yang bisa mengubah PENDING."""
-    patch = {
-        "responder_status": "ACCEPTED",
-        "accepted_at": datetime.now(timezone.utc).isoformat(),
-        "accepted_by": responder[:160],
-    }
-    table = get_client().table("reports")
-    result = (table.update(patch).eq("id", report_id).eq("status", "active")
-              .eq("responder_status", "PENDING").eq("telegram_chat_id", chat_id)
-              .eq("telegram_message_id", message_id).execute())
-    if result.data:
-        return result.data[0], True
-    existing = (get_client().table("reports").select("*").eq("id", report_id)
-                .eq("telegram_chat_id", chat_id).eq("telegram_message_id", message_id)
-                .limit(1).execute())
-    if existing.data and existing.data[0]["responder_status"] == "ACCEPTED":
-        return existing.data[0], False
-    return None, False
+    }).eq("id", report_id).in_("status", ["active", "held"]).is_("telegram_message_id", "null").execute()
 
 
 def answer_callback(callback_id: str, text: str) -> None:

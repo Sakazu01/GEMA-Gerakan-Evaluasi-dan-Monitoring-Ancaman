@@ -7,7 +7,9 @@ import {
   disasterNames,
   helpResponseLabel,
   isWarningZoneReport,
-  severityMap,
+  mapStyle,
+  awarenessRadius,
+  evidenceLabel,
   severityStatusLabel,
   timeAgoLabel,
   type MapLocation,
@@ -40,7 +42,7 @@ function approxDistanceLabel(from: MapLocation, toLat: number, toLng: number): s
 // ada di skema (bukan field aspirasional Figma seperti "Angin"/"Cuaca" yang belum
 // dikumpulkan sistem ini).
 function buildReportPopup(report: Report, location: MapLocation | null): HTMLElement {
-  const style = severityMap[report.severity];
+  const style = mapStyle(report);
   const type = disasterBadge[report.type];
 
   const root = document.createElement("div");
@@ -91,8 +93,8 @@ function buildReportPopup(report: Report, location: MapLocation | null): HTMLEle
   const badges = document.createElement("div");
   badges.className = "gema-popup__badges";
   badges.innerHTML = `
-    <span class="gema-popup__badge" style="background:${style.badgeBg};color:${style.color}">
-      <span class="gema-popup__dot" style="background:${style.color}"></span>${severityStatusLabel(report.severity)}
+    <span class="gema-popup__badge" style="background:${style.badgeBg};color:${style.badgeBg==="#242424"?"#FFFFFF":"#334155"}">
+      <span class="gema-popup__dot" style="background:${style.color}"></span>${evidenceLabel(report)}
     </span>
     <span class="gema-popup__badge" style="background:${type.bg};color:#FAFAFA">
       <img src="${type.icon}" alt="" width="14" height="14" />${type.label}
@@ -100,6 +102,8 @@ function buildReportPopup(report: Report, location: MapLocation | null): HTMLEle
   body.appendChild(badges);
 
   const rows: [string, string][] = [];
+  rows.push(["Indikasi visual AI",severityStatusLabel(report.severity)]);
+  if(report.observed_at)rows.push(["Diamati",new Date(report.observed_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta"})+" WIB"]);
   if (location) {
     rows.push(["Jarak", approxDistanceLabel(location, report.public_lat, report.public_lng)]);
   }
@@ -129,7 +133,7 @@ function buildReportPopup(report: Report, location: MapLocation | null): HTMLEle
 
   const summary = document.createElement("p");
   summary.className = "gema-popup__summary";
-  summary.textContent = report.ai_summary;
+  summary.textContent = report.ai_summary || "Laporan warga; analisis belum tersedia.";
   body.appendChild(summary);
 
   const footer = document.createElement("p");
@@ -202,20 +206,16 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
     const active = reports.filter((report) => report.status === "active");
     if (mode === "density") {
       if (densityPoints) {
-        // Hijau menandai area tanpa laporan dalam data 24 jam yang dimuat.
-        L.rectangle([[-85, -180], [85, 180]], {
-          stroke: false, fillColor: severityMap.rendah.color, fillOpacity: 0.08, interactive: false,
-        }).addTo(layers);
+        // Count uses one neutral palette and never labels regions without reports as safe.
         for (const point of densityPoints) {
-          const color = point.count >= 10 ? severityMap.kritis.color
-            : point.count >= 3 ? severityMap.tinggi.color : severityMap.sedang.color;
+          const color = "#1D4ED8";
           const size = Math.min(100, 44 + Math.round(9 * Math.sqrt(point.count - 1)));
           const badge = document.createElement("span");
           badge.textContent = String(point.count);
           badge.setAttribute("aria-hidden", "true");
           badge.style.cssText = "display:flex;align-items:center;justify-content:center;border-radius:50%;font-weight:800;border:2px solid white;width:"
             + size + "px;height:" + size + "px;background:" + color + ";color:"
-            + (point.count <= 2 ? "#111827" : "#FFFFFF") + ";box-shadow:0 0 "
+            + "#FFFFFF" + ";box-shadow:0 0 "
             + Math.round(size / 2) + "px " + Math.round(size / 4) + "px " + color + "66";
           const label = point.count + " pelapor dalam radius 50 meter. Laporan warga belum diverifikasi.";
           const popup = document.createElement("p");
@@ -229,28 +229,28 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
       }
     } else {
       for (const report of active) {
-        const style = severityMap[report.severity];
+        const style = mapStyle(report);
         if (isWarningZoneReport(report)) {
           L.circle([report.public_lat, report.public_lng], {
-            radius: style.warningRadiusM,
+            radius: awarenessRadius(report),
             color: style.color,
             weight: 2,
             fillColor: style.color,
             fillOpacity: 0.09,
           }).bindTooltip(
-            disasterNames[report.type] + ": " + severityStatusLabel(report.severity) + ". Bukan batas bahaya resmi."
+            disasterNames[report.type] + ": jangkauan informasi " + awarenessRadius(report) + " m. Bukan batas bahaya resmi."
           ).addTo(layers);
         }
 
         const icon = L.divIcon({
           className: "gema-report-marker",
           html: `<span class="gema-report-marker__inner" style="background:${style.color}" aria-hidden="true"><img src="${disasterBadge[report.type].icon}" alt="" width="18" height="18" /></span>`,
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
         });
         L.marker([report.public_lat, report.public_lng], {
           icon,
-          title: `${disasterNames[report.type]}, ${severityStatusLabel(report.severity)}, ${report.location_label}`,
+          title: `${disasterNames[report.type]}, ${evidenceLabel(report)}, ${report.location_label}`,
         }).bindPopup(buildReportPopup(report, location), { minWidth: 260 }).addTo(layers);
       }
     }

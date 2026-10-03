@@ -1,299 +1,248 @@
-"""Baca laporan dari Supabase dan ubah jadi proyeksi publik (plan.md "Kontrak API")."""
-
-from datetime import datetime, timedelta, timezone
+"""Public projections, private drafts, and atomic publication."""
+import hashlib
+import json
+from datetime import timedelta
 from typing import Any
 from uuid import uuid4
 
 from app.core.config import settings
 from app.schemas.report import ReportOut
 from app.schemas.requests import PublishReportRequest
+from app.services.clock import utcnow
 from app.services.model import AnalyzeResult
 from app.services.rules import haversine_distance_m, help_status_from_counts
 from app.services.supabase_client import get_client
+from app.services.trust import active_public, observation_counts, notice_radius, moment
 
-# Suara ikut ditarik lewat embed PostgREST supaya tetap satu query (bukan N+1);
-# penghitungannya di Python karena jumlah data demo kecil.
-_SELECT = "*, false_votes(voter_id), help_votes(value)"
-
-# PRD §9.2: koordinat publik dibulatkan ~100 m. Koordinat asli tidak pernah keluar server.
+_SELECT = "*, false_votes(voter_id), help_votes(value), observations(*), abuse_reports(created_at)"
 _PUBLIC_COORD_DECIMALS = 3
+PHOTO_BUCKET = "report-photos"
 
 
 def _to_public(row: dict[str, Any]) -> ReportOut:
-    """Sengaja membuang lat/lng asli, author_id, photo_path, dan ai_reason."""
     values = [vote["value"] for vote in row.get("help_votes") or []]
-    seen_count = values.count("seen")
-    not_seen_count = values.count("not_seen")
+    seen, not_seen = values.count("seen"), values.count("not_seen")
+    confirmed = row.get("verification_status") == "confirmed" and row.get("closure_reason")!="refuted"
+    now = utcnow()
+    expired = row["status"]=="active" and moment(row.get("expires_at")) is not None and moment(row["expires_at"])<=now
+    status = "closed" if expired else row["status"]
+    verified = moment(row.get("verified_at"))
+    new_abuse = any(not verified or (moment(item.get("created_at")) and moment(item["created_at"])>verified) for item in row.get("abuse_reports") or [])
+    conflict = any(item.get("value")=="not_observed" and not item.get("withdrawn_at") and not item.get("abuse_flag") and
+        (not verified or (moment(item.get("received_at")) and moment(item["received_at"])>verified)) for item in row.get("observations") or [])
     return ReportOut(
-        id=row["id"],
-        status=row["status"],
-        responder_status=row.get("responder_status", "PENDING"),
-        type=row["type"],
-        severity=row["severity"],
-        ai_summary=row["ai_summary"],
-        description=row.get("description"),
-        details=row.get("details_json"),
-        location_label=row["location_label"],
-        location_source=row["location_source"],
-        public_lat=round(row["lat"], _PUBLIC_COORD_DECIMALS),
-        public_lng=round(row["lng"], _PUBLIC_COORD_DECIMALS),
-        published_at=row.get("published_at"),
-        created_at=row["created_at"],
-        is_demo=row["is_demo"],
-        help_status=help_status_from_counts(seen_count, not_seen_count),
-        seen_count=seen_count,
-        not_seen_count=not_seen_count,
+        id=row["id"], status=status, responder_status=row.get("responder_status", "PENDING"),
+        type=row.get("reported_type") or row["type"], severity=row.get("severity"),
+        ai_summary=row.get("ai_summary") if row.get("ai_status", "relevant") == "relevant" else None,
+        description=row.get("description") if confirmed else None,
+        details=row.get("details_json") if confirmed else None,
+        location_label=row.get("location_label") or "Area belum dipilih",
+        location_source=row.get("location_source") or "map",
+        public_lat=round(row.get("lat") or 0, _PUBLIC_COORD_DECIMALS),
+        public_lng=round(row.get("lng") or 0, _PUBLIC_COORD_DECIMALS),
+        published_at=row.get("published_at"), created_at=row["created_at"], is_demo=row.get("is_demo", False),
+        help_status=help_status_from_counts(seen, not_seen), seen_count=seen, not_seen_count=not_seen,
         false_vote_count=len(row.get("false_votes") or []),
+        verification_status=row.get("verification_status", "unconfirmed"),
+        closure_reason="expired" if expired else row.get("closure_reason"), ai_status=row.get("ai_status", "not_requested"),
+        reported_type=row.get("reported_type"), ai_disaster_type=row.get("ai_disaster_type"),
+        observed_at=row.get("observed_at"), observation_time_known=row.get("observation_time_known", False),
+        photo_source=row.get("photo_source", "none"), expires_at=row.get("expires_at"),
+        verified_at=row.get("verified_at"), public_verification_note=row.get("public_verification_note"),
+        version=row.get("version", 1), observation_counts=observation_counts(row, now),
+        awareness_radius_m=notice_radius(row) if active_public(row,now) else None,
+        review_requested=status!="closed" and (row["status"]=="held" or row.get("verification_status")=="under_review" or bool(new_abuse or conflict)),
     )
 
 
-def list_active(limit: int) -> list[ReportOut]:
-    res = (
-        get_client()
-        .table("reports")
-        .select(_SELECT)
-        .eq("status", "active")
-        .order("published_at", desc=True)
-        .limit(limit)
-        .execute()
-    )
-    return [_to_public(row) for row in res.data]
+def public_active_query(columns: str = _SELECT):
+    return get_client().table("reports").select(columns).eq("status", "active").eq("is_demo", False).gt("expires_at", utcnow().isoformat())
+
+
+def list_active(limit: int, cursor: str | None = None, cursor_id: str | None = None) -> list[ReportOut]:
+    query = public_active_query().order("published_at", desc=True).order("id", desc=True)
+    if cursor:
+        # Cursor is an ISO timestamp supplied by the last item, validated in the route.
+        query = query.or_(f"published_at.lt.{cursor},and(published_at.eq.{cursor},id.lt.{cursor_id})") if cursor_id else query.lt("published_at",cursor)
+    return [_to_public(row) for row in query.limit(limit).execute().data]
 
 
 def cluster_density_rows(rows: list[dict[str, Any]]) -> list[dict[str, float | int]]:
-    """Hitung pelapor unik dalam 50 m dari titik pusat tiap kelompok."""
-    # ponytail: pemindaian O(n²) cukup untuk demo; pakai agregasi spasial DB jika laporan membesar.
     groups: list[dict[str, Any]] = []
     for row in sorted(rows, key=lambda item: (item["published_at"], item["id"])):
-        group = next(
-            (item for item in groups if haversine_distance_m(
-                item["lat"], item["lng"], row["lat"], row["lng"]
-            ) <= 50),
-            None,
-        )
+        group = next((g for g in groups if haversine_distance_m(g["lat"],g["lng"],row["lat"],row["lng"]) <= 50), None)
         if group is None:
             group = {"lat": row["lat"], "lng": row["lng"], "authors": set()}
             groups.append(group)
         group["authors"].add(row["author_id"])
-    return [
-        {
-            "lat": round(group["lat"], _PUBLIC_COORD_DECIMALS),
-            "lng": round(group["lng"], _PUBLIC_COORD_DECIMALS),
-            "count": len(group["authors"]),
-        }
-        for group in groups
-    ]
+    return [{"lat": round(g["lat"],3),"lng": round(g["lng"],3),"count":len(g["authors"])} for g in groups]
 
 
-def list_density_points() -> list[dict[str, float | int]]:
-    """Agregasi dari koordinat asli; kirim hanya pusat yang dibulatkan dan jumlah."""
-    now = datetime.now(timezone.utc)
-    res = (
-        get_client()
-        .table("reports")
-        .select("id, author_id, lat, lng, published_at")
-        .eq("status", "active")
-        .gte("published_at", (now - timedelta(hours=24)).isoformat())
-        .lte("published_at", now.isoformat())
-        .execute()
-    )
-    return cluster_density_rows(res.data)
+def active_rows(columns: str = _SELECT) -> list[dict[str, Any]]:
+    # Supabase caps each page; explicitly paginate for density, nearby and chat.
+    rows = []
+    start = 0
+    while True:
+        page = public_active_query(columns).order("id").range(start,start+499).execute().data
+        rows.extend(page)
+        if len(page) < 500:
+            return rows
+        start += 500
 
 
-def list_all_for_monitoring() -> list[ReportOut]:
-    """Semua laporan yang sudah pernah terbit (active + disputed_hidden), buat dashboard
-    Pemerintah (PRD §3: "tabel semua laporan termasuk disputed_hidden"). Draft SENGAJA
-    tidak diikutkan -- belum punya lat/lng/location_label sampai dipublish, jadi _to_public()
-    bakal gagal kalau dipaksakan (KeyError)."""
-    res = (
-        get_client()
-        .table("reports")
-        .select(_SELECT)
-        .in_("status", ["active", "disputed_hidden"])
-        .order("created_at", desc=True)
-        .execute()
-    )
-    return [_to_public(row) for row in res.data]
+def list_density_points():
+    return cluster_density_rows(active_rows("id,author_id,lat,lng,published_at"))
+
+
+def list_all_for_monitoring(limit: int = 50, offset: int = 0) -> list[ReportOut]:
+    rows = get_client().table("reports").select(_SELECT).in_("status", ["active","held","closed"]).eq("is_demo",False).order("created_at",desc=True).range(offset,offset+limit-1).execute().data
+    return [_to_public(row) for row in rows]
+
+
+def get_row(report_id: str, author_id: str | None = None) -> dict[str, Any] | None:
+    query = get_client().table("reports").select(_SELECT).eq("id",report_id)
+    if author_id:
+        query = query.eq("author_id",author_id)
+    rows = query.limit(1).execute().data
+    return rows[0] if rows else None
 
 
 def get_active(report_id: str) -> ReportOut | None:
-    res = (
-        get_client()
-        .table("reports")
-        .select(_SELECT)
-        .eq("id", report_id)
-        .eq("status", "active")
-        .limit(1)
-        .execute()
-    )
-    return _to_public(res.data[0]) if res.data else None
+    row = get_row(report_id)
+    # Closed reports expose a safe correction/closure, but never their original raw photo.
+    if not row or row.get("is_demo") or row["status"] not in ("active","closed"):
+        return None
+    if row["status"] == "active" and not active_public(row,utcnow()):
+        row = {**row,"status":"closed","closure_reason":"expired"}
+    return _to_public(row)
 
 
 def list_by_author(author_id: str) -> list[ReportOut]:
-    """Laporan milik pengguna, termasuk yang disembunyikan karena sanggahan (PRD §10).
-    Draft sengaja tidak ikut: belum punya lokasi, dan PRD §9.1 melarangnya tampil."""
-    res = (
-        get_client()
-        .table("reports")
-        .select(_SELECT)
-        .eq("author_id", author_id)
-        .in_("status", ["active", "disputed_hidden"])
-        .order("created_at", desc=True)
-        .execute()
-    )
-    return [_to_public(row) for row in res.data]
+    rows = get_client().table("reports").select(_SELECT).eq("author_id",author_id).in_("status",["active","held","closed"]).order("created_at",desc=True).limit(100).execute().data
+    return [_to_public(row) for row in rows]
 
 
-# --- tulis: draft (A2) ---
+def private_detail(row: dict[str, Any], moderator: bool = False) -> dict[str, Any]:
+    # No original photo is ever included in public projections.
+    signed = None
+    photo_error = False
+    if row.get("photo_path"):
+        try:
+            signed = get_client().storage.from_(PHOTO_BUCKET).create_signed_url(row["photo_path"],60).get("signedURL")
+        except Exception:
+            photo_error = True
+    result = {
+        "report": _to_public(row).model_dump(mode="json"), "description": row.get("description"),
+        "risk_flags": row.get("risk_flags",[]), "photo_url": signed, "photo_unavailable": photo_error,
+        "own_observation": None,
+    }
+    if moderator:
+        result.update({
+            "lat":row.get("lat"),"lng":row.get("lng"),"verification_note":row.get("verification_note"),
+            "observations":[{k:v for k,v in o.items() if k not in ("lat","lng")} for o in row.get("observations") or []],
+            "abuse_reports":get_client().table("abuse_reports").select("category,reason,created_at").eq("report_id",row["id"]).execute().data,
+            "audit":get_client().table("moderation_events").select("*").eq("report_id",row["id"]).order("created_at").execute().data,
+            "outbox":get_client().table("notification_outbox").select("id,state,channel,attempts,last_error_code,created_at").eq("report_id",row["id"]).execute().data,
+        })
+    return result
 
-# Bucket ini dibuat SEKALI secara manual di dashboard Supabase (Storage -> New bucket,
-# nama "report-photos", public OFF) -- bukan tugas kode ini. Kalau upload gagal dengan
-# pesan "Bucket not found", itu tandanya bucket belum dibuat, bukan bug di sini.
-PHOTO_BUCKET = "report-photos"
-_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+
+def create_raw_draft(author_id: str, photo: bytes | None = None, mime: str = "image/jpeg", sha256: str | None = None, phash: str | None = None, client_id: str | None = None) -> str:
+    # client_id enables safe retry after a lost upload response; ownership is always checked.
+    report_id = client_id or str(uuid4())
+    existing = get_row(report_id)
+    if existing:
+        if existing["author_id"] != author_id:
+            raise ValueError("idempotency_conflict")
+        return report_id
+    path = f"{author_id}/{report_id}.jpg" if photo else None
+    client = get_client()
+    if photo:
+        client.storage.from_(PHOTO_BUCKET).upload(path,photo,{"content-type":mime})
+    row = {
+        "id":report_id,"author_id":author_id,"status":"draft","ai_status":"not_requested",
+        "photo_path":path,"photo_sha256":sha256,"photo_phash":phash,"is_demo":settings.demo_mode,
+    }
+    try:
+        client.table("reports").insert(row).execute()
+    except Exception:
+        # A concurrent retry may have won the insert. Do not remove its referenced photo.
+        winner = get_row(report_id,author_id)
+        if winner:
+            return report_id
+        if path:
+            try:
+                client.storage.from_(PHOTO_BUCKET).remove([path])
+            except Exception:
+                pass
+        raise
+    return report_id
 
 
 def create_draft(author_id: str, result: AnalyzeResult, photo: bytes, mime: str) -> str:
-    """Simpan foto + baris draft. Hanya dipanggil kalau AI bilang relevant (PRD §9.1)."""
-    # Nama acak, bukan nama file pengguna (PRD §11).
-    path = f"{author_id}/{uuid4()}.{_EXT[mime]}"
-    client = get_client()
-    client.storage.from_(PHOTO_BUCKET).upload(
-        path, photo, {"content-type": mime}
-    )
-    row = {
-        "author_id": author_id,
-        "status": "draft",
-        "type": result.disaster_type,
-        "severity": result.severity,
-        "ai_summary": result.summary_id,
-        "ai_reason": result.reason_id,
-        "photo_path": path,
-        "is_demo": settings.demo_mode,
-    }
-    try:
-        res = client.table("reports").insert(row).execute()
-    except Exception:
-        # Jangan tinggalkan foto yatim bila insert draft ditolak database.
-        try:
-            client.storage.from_(PHOTO_BUCKET).remove([path])
-        except Exception:
-            pass
-        raise
-    return res.data[0]["id"]
+    # Legacy compatibility for callers outside the API.
+    report_id = create_raw_draft(author_id,photo,mime)
+    save_analysis(report_id,author_id,result)
+    return report_id
 
 
-def publish_draft(author_id: str, req: PublishReportRequest) -> tuple[dict[str, Any], bool]:
-    """Draft -> active. Mengembalikan (baris, sudah_pernah_terbit).
-
-    Idempoten: submit draft yang sama dua kali mengembalikan laporan yang sama, bukan
-    bikin marker kedua (PRD §10).
-    """
-    res = (
-        get_client()
-        .table("reports")
-        .select("id, status, published_at, author_id, type")
-        .eq("id", str(req.draft_id))
-        .eq("author_id", author_id)
-        .limit(1)
-        .execute()
-    )
-    if not res.data:
-        return {}, False
-    row = res.data[0]
-    if row["status"] == "active":
-        return row, True
-    if row["status"] != "draft":
-        raise ValueError("status_tidak_bisa_diterbitkan")
-    if req.details is not None and req.details.type != row["type"]:
-        raise ValueError("details_tidak_cocok_jenis")
-
+def save_analysis(report_id: str, author_id: str, result: AnalyzeResult | None) -> dict[str, Any]:
+    relevant = result is not None and result.validity == "relevant" and result.disaster_type in ("fire","flood","landslide") and result.severity in ("rendah","sedang","tinggi","kritis") and bool(result.summary_id)
+    status = "relevant" if relevant else ("uncertain" if result and result.validity=="relevant" else result.validity if result else "unavailable")
     patch = {
-        "status": "active",
-        "published_at": datetime.now(timezone.utc).isoformat(),
-        "lat": req.lat,
-        "lng": req.lng,
-        "location_source": req.location_source.value,
-        "location_label": req.location_label,
-        "description": req.description,
-        "details_json": req.details.model_dump() if req.details else None,
+        "ai_status":status,"ai_disaster_type":result.disaster_type if relevant else None,
+        "type":result.disaster_type if relevant else None,"severity":result.severity if relevant else None,
+        "ai_summary":result.summary_id[:240] if relevant else None,
+        "ai_reason":result.reason_id[:120] if result else None,"analysis_lease_until":None,
     }
-    out = (
-        get_client()
-        .table("reports")
-        .update(patch)
-        .eq("id", str(req.draft_id))
-        .eq("status", "draft")  # jaga-jaga kalau ada dua request barengan
-        .execute()
-    )
-    if out.data:
-        return out.data[0], False
-    # Request lain sudah menerbitkan draf ini; jangan kirim notifikasi kedua.
-    latest = (
-        get_client().table("reports")
-        .select("id, status, published_at, author_id, type")
-        .eq("id", str(req.draft_id)).eq("author_id", author_id).limit(1).execute()
-    )
-    return (latest.data[0] if latest.data else {}), True
+    rows = get_client().table("reports").update(patch).eq("id",report_id).eq("author_id",author_id).eq("status","draft").execute().data
+    if not rows:
+        raise ValueError("report_not_draft")
+    return {"draft_id":report_id,"ai_status":status,"validity":status if status in ("relevant","invalid","uncertain") else "uncertain",
+            "type":patch["ai_disaster_type"],"severity":patch["severity"],"summary":patch["ai_summary"],"reason":patch["ai_reason"] or "Analisis belum tersedia; draft tersimpan."}
+
+
+def publish_draft(author_id: str, req: PublishReportRequest, key: str | None = None) -> tuple[dict[str, Any], bool]:
+    if req.location_source.value == "demo" and not settings.demo_mode:
+        raise ValueError("demo_location_forbidden")
+    payload = req.model_dump(mode="json")
+    digest = hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+    result = rpc("submit_report",{
+        "p_user":author_id,"p_draft":str(req.draft_id),"p_payload":payload,
+        "p_key":key or str(req.draft_id),"p_hash":digest,"p_ttl":settings.report_active_ttl_hours,
+        "p_triage":bool(settings.tele_api and settings.tele_chat_id),
+    })
+    return result["report"], result["already_published"]
 
 
 def active_high_risk_candidates() -> list[dict[str, Any]]:
-    """Laporan aktif <=24 jam yang punya radius peringatan (severity bukan 'rendah').
-    Dipakai untuk cek in_red -- lihat app.services.rules.RADIUS_BY_SEVERITY_M."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-    res = (
-        get_client()
-        .table("reports")
-        .select("id, lat, lng, severity, published_at")
-        .eq("status", "active")
-        .neq("severity", "rendah")
-        .gte("published_at", cutoff)
-        .execute()
-    )
-    return res.data
-
-
-# --- tulis: vote (A3) ---
+    return active_rows()
 
 
 class VoteError(Exception):
-    """Bungkus error dari fungsi Postgres (cast_false_vote/cast_help_vote) jadi kode
-    yang bisa dipetakan api/votes.py ke status HTTP yang tepat."""
-
-    def __init__(self, code: str):
-        self.code = code
+    def __init__(self,code: str):
+        self.code=code
         super().__init__(code)
 
 
-def _call_vote_rpc(function_name: str, params: dict[str, Any]) -> dict[str, Any]:
-    """Panggil salah satu fungsi Postgres di migrations/003_vote_functions.sql dan
-    balikin baris hasilnya. Kalau fungsi itu RAISE EXCEPTION (mis. 'already_voted'),
-    Supabase membungkusnya jadi APIError -- pesannya persis sama teks yang di-raise,
-    tersedia lewat exc.message, jadi tinggal dipetakan ke VoteError.code apa adanya.
-    """
+def rpc(function: str, params: dict[str, Any]):
     try:
-        res = get_client().rpc(function_name, params).execute()
-    except Exception as e:
-        raise VoteError(getattr(e, "message", None) or "unknown_error") from e
-    return res.data[0]
+        return get_client().rpc(function,params).execute().data
+    except Exception as error:
+        code = getattr(error,"message","unknown_error")
+        raise VoteError(code) from error
 
 
-def cast_false_vote(report_id: str, voter_id: str, reason: str | None) -> dict[str, Any]:
-    row = _call_vote_rpc(
-        "cast_false_vote",
-        {"p_report_id": report_id, "p_voter_id": voter_id, "p_reason": reason},
-    )
-    return {"false_vote_count": row["false_vote_count"], "status": row["result_status"]}
+def _call_vote_rpc(function_name: str, params: dict[str, Any]) -> dict[str, Any]:
+    result=rpc(function_name,params)
+    return result[0] if isinstance(result,list) else result
 
 
-def cast_help_vote(report_id: str, voter_id: str, value: str) -> dict[str, Any]:
-    row = _call_vote_rpc(
-        "cast_help_vote",
-        {"p_report_id": report_id, "p_voter_id": voter_id, "p_value": value},
-    )
-    seen, not_seen = row["seen_count"], row["not_seen_count"]
-    return {
-        "seen_count": seen,
-        "not_seen_count": not_seen,
-        "help_status": help_status_from_counts(seen, not_seen).value,
-    }
+def cast_false_vote(report_id: str,voter_id: str,reason: str | None):
+    row=_call_vote_rpc("cast_false_vote",{"p_report_id":report_id,"p_voter_id":voter_id,"p_reason":reason})
+    return {"false_vote_count":row["false_vote_count"],"status":row["result_status"]}
+
+
+def cast_help_vote(report_id: str,voter_id: str,value: str):
+    row=_call_vote_rpc("cast_help_vote",{"p_report_id":report_id,"p_voter_id":voter_id,"p_value":value})
+    return {"seen_count":row["seen_count"],"not_seen_count":row["not_seen_count"],"help_status":help_status_from_counts(row["seen_count"],row["not_seen_count"]).value}

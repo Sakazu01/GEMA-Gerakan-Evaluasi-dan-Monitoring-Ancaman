@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
-import { disasterNames, severityMap } from "@/lib/demo-reports";
+import { disasterNames, visualStyle } from "@/lib/demo-reports";
 import type { Report } from "@/types/report";
 
 const tips = {
@@ -28,10 +28,10 @@ export function ZoneCards({
   if (!nearest) return null;
 
   const { report, distance_m } = nearest;
-  const radiusKm = severityMap[report.severity].warningRadiusM / 1000;
+  const radiusKm = visualStyle(report.severity).warningRadiusM / 1000;
   return (
     <section aria-label="Informasi area perhatian" className="grid gap-3 md:grid-cols-2">
-      <Card className="border-2 bg-white" style={{ borderColor: severityMap[report.severity].color }}>
+      <Card className="border-2 bg-white" style={{ borderColor: visualStyle(report.severity).color }}>
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-bold text-slate-950">Area perhatian sementara</h3>
           <button type="button" aria-expanded={safetyOpen} onClick={() => setSafetyOpen(!safetyOpen)}
@@ -43,7 +43,7 @@ export function ZoneCards({
           <div className="text-sm text-slate-950">
             <p className="mt-1">Laporan {disasterNames[report.type].toLowerCase()} berkeparahan {report.severity} sekitar {Math.round(distance_m)} m dari titik pilihan.</p>
             <p className="mt-2">{tips[report.type]}</p>
-            <p className="mt-2 font-medium">Radius perhatian sementara {radiusKm} km ini berdasarkan laporan warga yang belum diverifikasi. Bukan batas bahaya resmi atau rute evakuasi.</p>
+            <p className="mt-2 font-medium">Jangkauan informasi {radiusKm} km bukan batas bahaya resmi atau rute evakuasi. Status bukti harus diperiksa pada detail.</p>
             <Link href="/evakuasi" className="mt-2 mr-4 inline-flex min-h-11 items-center font-semibold underline">Baca panduan evakuasi</Link>
             <Link href="/hotline" className="mt-2 inline-flex min-h-11 items-center font-semibold underline">Lihat hotline darurat</Link>
           </div>

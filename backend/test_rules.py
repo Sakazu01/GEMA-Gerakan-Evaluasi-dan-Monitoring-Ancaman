@@ -16,13 +16,14 @@ def test_help_status_from_counts():
 
 
 def test_projeksi_publik():
-    """Baris DB (bentuk balikan PostgREST) -> kontrak publik di plan.md."""
+    """Baris DB (bentuk balikan PostgREST) -> kontrak publik ReportOut."""
     from app.services.reports import _to_public
 
     row = {
         "id": "b6e1f2a0-0000-4000-8000-000000000001",
         "author_id": "rahasia-jangan-bocor",
         "status": "active",
+        "verification_status": "confirmed",
         "type": "flood",
         "severity": "tinggi",
         "ai_summary": "Genangan air lebih dari 1 meter dengan arus terlihat deras.",
@@ -52,6 +53,8 @@ def test_projeksi_publik():
     assert (out["seen_count"], out["not_seen_count"], out["false_vote_count"]) == (2, 1, 2)
     assert out["help_status"] == "terlihat"
     assert out["details"] == {"type": "flood", "water_depth": ">100cm", "current": "deras"}
+    unconfirmed = _to_public({**row, "verification_status": "unconfirmed"}).model_dump()
+    assert unconfirmed["details"] is None and unconfirmed["description"] is None
 
 
 

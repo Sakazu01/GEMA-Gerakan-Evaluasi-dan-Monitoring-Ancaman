@@ -1,4 +1,4 @@
-"""Aturan bisnis murni (tanpa I/O) — lihat PRD.md §9. Dites di backend/test_rules.py."""
+"""Aturan bisnis murni (tanpa I/O). Dites di backend/test_rules.py."""
 
 import math
 

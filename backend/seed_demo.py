@@ -1,20 +1,16 @@
-"""Isi database dengan laporan DEMO. Jalankan: cd backend && python seed_demo.py
+"""Fixture privat pada database demo terpisah, bukan laporan untuk feed publik.
 
-Semua baris ditandai is_demo=true dan dihapus dulu tiap kali dijalankan, jadi aman diulang
-dan gampang dibersihkan sebelum lomba selesai (PRD §0: data simulasi tidak boleh dikira nyata).
+Jalankan dari backend dengan DEMO_MODE=true: python seed_demo.py.
+Tidak membuat sesi Auth, mengirim notifikasi, atau menjalankan analisis AI.
 """
 
 from datetime import datetime, timedelta, timezone
 
+from app.core.config import settings
 from app.services.supabase_client import get_client
 
-# id tetap supaya /api/my-reports bisa diuji: pakai ini sebagai "Bearer <id>".
+# Identitas fixture, bukan token Auth. Endpoint privat tetap memerlukan JWT valid.
 DEMO_AUTHOR_ID = "11111111-1111-4111-8111-111111111111"
-_OTHER_VOTERS = [
-    "22222222-2222-4222-8222-222222222222",
-    "33333333-3333-4333-8333-333333333333",
-    "44444444-4444-4444-8444-444444444444",
-]
 
 
 def _jam_lalu(n: int) -> str:
@@ -26,11 +22,10 @@ def _fake_author(n: int) -> str:
 
 
 def _konfirmasi_tambahan(prefix: str, lat: float, lng: float, n: int, disaster_type: str, label: str) -> list[dict]:
-    """Laporan konfirmasi dari pelapor LAIN di titik (hampir) sama. Severity dibuat rendah
-    supaya tidak membanjiri sorotan "perlu perhatian" Pemerintah -- tujuannya cuma menaikkan
-    hitungan unique-author di /api/reports/density (lihat cluster_density_rows di
-    backend/app/services/reports.py), supaya mode Kepadatan Laporan kelihatan variasi
-    kuning/merah/hitam, bukan kuning semua."""
+    """Fixture beberapa akun pada titik berdekatan; bukan bukti konfirmasi kejadian.
+
+Semua fixture dikecualikan dari feed, nearby, density, dan chat publik.
+"""
     return [
         {
             "id": f"{prefix}{i:02d}",
@@ -253,35 +248,51 @@ REPORTS = [
     "b6e1f2a0-3000-4000-8000-0000000000", -2.5330, 112.9501, 3, "fire", "Sekitar Sampit, Kalimantan Tengah",
 )
 
-# Laporan #1 dapat 2 suara "sudah terlihat" -> status bantuan jadi "terlihat" (PRD §9.3).
-HELP_VOTES = [
-    {"report_id": REPORTS[0]["id"], "voter_id": _OTHER_VOTERS[0], "value": "seen"},
-    {"report_id": REPORTS[0]["id"], "voter_id": _OTHER_VOTERS[1], "value": "seen"},
-    {"report_id": REPORTS[1]["id"], "voter_id": _OTHER_VOTERS[0], "value": "not_seen"},
-]
-
-# Laporan #4 disanggah 3 akun berbeda -> itu sebabnya statusnya disputed_hidden.
-FALSE_VOTES = [
-    {"report_id": REPORTS[3]["id"], "voter_id": voter} for voter in _OTHER_VOTERS
-]
+def build_demo_rows(now: datetime | None = None) -> list[dict]:
+    """Sesuaikan fixture lama ke skema 005+, tanpa mengarang hasil AI/foto/konfirmasi."""
+    now = now or datetime.now(timezone.utc)
+    rows = []
+    for fixture in REPORTS:
+        observed = datetime.fromisoformat(fixture["published_at"])
+        expires = observed + timedelta(hours=settings.report_active_ttl_hours)
+        held = fixture["status"] == "disputed_hidden"
+        status = "held" if held else "closed" if expires <= now else "active"
+        rows.append({
+            **fixture,
+            "author_id": fixture.get("author_id", DEMO_AUTHOR_ID),
+            "is_demo": True,
+            "status": status,
+            "closure_reason": "expired" if status == "closed" else None,
+            "verification_status": "under_review" if held else "unconfirmed",
+            "reported_type": fixture["type"],
+            "observed_at": observed.isoformat(),
+            "observation_time_known": True,
+            "expires_at": expires.isoformat(),
+            "photo_path": None,
+            "photo_source": "none",
+            "ai_status": "not_requested",
+            "ai_summary": None,
+            "ai_reason": None,
+            "severity": None,
+            "risk_flags": ["demo_fixture"],
+            "location_label": f"DEMO — {fixture['location_label']}",
+        })
+    return rows
 
 
 def main() -> None:
+    if not settings.demo_mode:
+        raise SystemExit("Seed ditolak: gunakan database demo terpisah dengan DEMO_MODE=true.")
     client = get_client()
 
     client.table("reports").delete().eq("is_demo", True).execute()
     print("laporan DEMO lama dihapus")
 
-    rows = [
-        {"author_id": DEMO_AUTHOR_ID, **r, "is_demo": True, "photo_path": f"demo/{r['id']}.jpg"}
-        for r in REPORTS
-    ]
+    rows = build_demo_rows()
     client.table("reports").insert(rows).execute()
-    client.table("help_votes").insert(HELP_VOTES).execute()
-    client.table("false_votes").insert(FALSE_VOTES).execute()
 
-    print(f"masuk: {len(rows)} laporan, {len(HELP_VOTES)} help_votes, {len(FALSE_VOTES)} false_votes")
-    print(f"uji /api/my-reports pakai header: Authorization: Bearer {DEMO_AUTHOR_ID}")
+    print(f"masuk: {len(rows)} fixture DEMO; tidak terlihat di feed/nearby/density/chat publik")
+    print("UUID fixture bukan token login. Gunakan Auth nyata dan alur laporan di staging untuk demo UI.")
 
 
 if __name__ == "__main__":

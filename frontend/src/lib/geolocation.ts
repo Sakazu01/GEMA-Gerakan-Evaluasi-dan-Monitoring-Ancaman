@@ -18,6 +18,7 @@ export function requestDeviceLocation(
         label: "Lokasi perangkat (perkiraan)",
         source: "device",
         accuracy_m: accuracy,
+        measured_at: new Date(position.timestamp).toISOString(),
       });
       onMessage(accuracy > 100
         ? "Akurasi lokasi sekitar " + Math.round(accuracy) + " m. Periksa titik di peta sebelum menggunakannya."
@@ -25,7 +26,7 @@ export function requestDeviceLocation(
     },
     (error) => {
       onMessage(error.code === 1
-        ? "Izin lokasi ditolak. Izinkan lokasi untuk localhost di browser, lalu muat ulang halaman."
+        ? "Izin lokasi ditolak. Anda tetap dapat memilih area secara manual di peta."
         : "Lokasi perangkat belum tersedia. Periksa layanan lokasi, muat ulang halaman, atau pilih titik di peta.");
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },

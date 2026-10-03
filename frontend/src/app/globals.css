@@ -2,10 +2,16 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
+  --font-jakarta: "Plus Jakarta Sans Variable";
   /* Kertas hangat -- satu latar konsisten untuk seluruh app (sebelumnya beda-beda
      antara alur laporan yang krem dan halaman lain yang abu-abu dingin default). */
   --background: #f7f6e4;
   --foreground: #1c1c1c;
+  --brand-primary: #0d5d3a;
+  --surface: #fff;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-control: #64748b;
 }
 
 @theme inline {
@@ -13,6 +19,20 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-jakarta);
 }
+
+.gema-card { background: var(--surface); color: var(--text-primary); border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; }
+.gema-button, .gema-button-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; border-radius: 8px; padding: 8px 16px; font-weight: 600; cursor: pointer; }
+.gema-button { background: var(--brand-primary); color: white; border: 1px solid var(--brand-primary); }
+.gema-button-secondary { background: white; color: var(--brand-primary); border: 1px solid var(--brand-primary); }
+.gema-button:disabled, .gema-button-secondary:disabled { opacity: .65; cursor: wait; }
+.gema-input { display: block; width: 100%; min-height: 44px; border: 1px solid var(--border-control); border-radius: 8px; padding: 8px 12px; background: white; color: var(--text-primary); }
+.gema-link { color: var(--brand-primary); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
+.evidence-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 12px; font-size: 14px; font-weight: 600; }
+.evidence-unconfirmed { background: #f1f5f9; color: #334155; }
+.evidence-under_review { background: #fef3c7; color: #78350f; }
+.evidence-confirmed { background: #dcfce7; color: #14532d; }
+.evidence-closed { background: #f1f5f9; color: #475569; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
 
 body {
   background: var(--background);
@@ -39,9 +59,9 @@ body {
   display: flex;
   font-size: 14px;
   font-weight: 700;
-  height: 32px;
+  height: 44px;
   justify-content: center;
-  width: 32px;
+  width: 44px;
 }
 
 /* Popup marker peta, meniru "Tool tip detail bencana" di Figma. */
@@ -73,10 +93,10 @@ body {
   border-radius: 9999px;
   cursor: pointer;
   display: flex;
-  height: 22px;
+  height: 44px;
   justify-content: center;
   padding: 0;
-  width: 22px;
+  width: 44px;
 }
 
 .gema-popup__action:hover {

@@ -11,10 +11,10 @@ export const severityMap: Record<Severity, {
   radiusLabel: string;
   badgeBg: string;
 }> = {
-  rendah: { color: "#0D5D3A", textColor: "#FAFAFA", warningRadiusM: 0, label: "TERKENDALI", radiusLabel: "", badgeBg: "rgba(13, 93, 58, 0.22)" },
-  sedang: { color: "#FFBB00", textColor: "#000000", warningRadiusM: 1000, label: "WASPADA", radiusLabel: "radius ±1 km", badgeBg: "#F0F0F0" },
-  tinggi: { color: "#CF0003", textColor: "#FAFAFA", warningRadiusM: 3000, label: "BAHAYA", radiusLabel: "radius 3-5 km", badgeBg: "#FFD1D1" },
-  kritis: { color: "#242424", textColor: "#FAFAFA", warningRadiusM: 10000, label: "KRITIS", radiusLabel: "radius >10 km", badgeBg: "#242424" },
+  rendah: { color: "#0D5D3A", textColor: "#FFFFFF", warningRadiusM: 500, label: "Indikasi visual ringan", radiusLabel: "jangkauan informasi 500 m", badgeBg: "#DCFCE7" },
+  sedang: { color: "#FFBB00", textColor: "#0F172A", warningRadiusM: 1000, label: "Indikasi visual sedang", radiusLabel: "jangkauan informasi 1 km", badgeBg: "#FEF3C7" },
+  tinggi: { color: "#CF0003", textColor: "#FFFFFF", warningRadiusM: 3000, label: "Indikasi visual tinggi", radiusLabel: "jangkauan informasi 3 km", badgeBg: "#FEE2E2" },
+  kritis: { color: "#242424", textColor: "#FFFFFF", warningRadiusM: 10000, label: "Indikasi visual kritis", radiusLabel: "jangkauan informasi 10 km", badgeBg: "#242424" },
 };
 
 // Target eskalasi instansi per tingkat keparahan -- dari proposal tim (Tabel 4.1). Teks
@@ -30,10 +30,15 @@ export const escalationTarget: Record<Severity, string> = {
 export const severityOrder = ["rendah", "sedang", "tinggi", "kritis"] as const satisfies readonly Severity[];
 
 // "TERKENDALI" saja (tanpa radius); yang lain "WASPADA (radius ±1 km)" dst.
-export function severityStatusLabel(severity: Severity): string {
-  const { label, radiusLabel } = severityMap[severity];
-  return radiusLabel ? `${label} (${radiusLabel})` : label;
+export function severityStatusLabel(severity: Severity | null): string {
+  return severity ? severityMap[severity].label : "Analisis belum tersedia";
 }
+
+export const neutralSeverity = {color:"#64748B",textColor:"#FFFFFF",warningRadiusM:0,label:"Belum dikonfirmasi",radiusLabel:"",badgeBg:"#F1F5F9"};
+export function visualStyle(severity:Severity|null){return severity?severityMap[severity]:neutralSeverity;}
+export function mapStyle(report:Report){return report.verification_status==="confirmed"?visualStyle(report.severity):neutralSeverity;}
+export function evidenceLabel(report:Report){return report.verification_status==="confirmed"?"Dikonfirmasi pengelola komunitas":report.verification_status==="under_review"?"Sedang ditinjau":"Belum dikonfirmasi";}
+export function awarenessRadius(report:Report){return report.awareness_radius_m??(report.severity?severityMap[report.severity].warningRadiusM:0);}
 
 export const disasterNames: Record<DisasterType, string> = {
   flood: "Banjir",
@@ -110,7 +115,7 @@ export const helpResponseLabel: Record<Report["help_status"], string> = {
 
 export const demoNow = Date.now();
 
-export type MapLocation = { lat: number; lng: number; label: string; source?: LocationSource; accuracy_m?: number };
+export type MapLocation = { lat: number; lng: number; label: string; source?: LocationSource; accuracy_m?: number; measured_at?: string };
 
 // Titik kumpul CONTOH (bukan data resmi BPBD/pemda setempat) -- dipakai /evakuasi supaya
 // panduan bisa menunjuk titik terdekat dari laporan yang dipilih, alih-alih placeholder
@@ -146,9 +151,8 @@ export function nearestTitikKumpul(lat: number, lng: number) {
 }
 
 export function isWarningZoneReport(report: Report, now = Date.now()) {
-  if (report.status !== "active" || !severityMap[report.severity].warningRadiusM || !report.published_at) {
+  if (report.status !== "active" || report.is_demo || report.verification_status !== "confirmed" || !awarenessRadius(report) || !report.expires_at) {
     return false;
   }
-  const age = now - new Date(report.published_at).getTime();
-  return age >= 0 && age <= 24 * 60 * 60 * 1000;
+  return new Date(report.expires_at).getTime() > now;
 }

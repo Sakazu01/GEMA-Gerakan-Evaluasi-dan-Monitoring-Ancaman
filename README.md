@@ -1,6 +1,6 @@
 # GEMA — Gerakan Evaluasi dan Monitoring Ancaman
 
-Platform pelaporan bencana berbasis foto dan AI untuk warga, dengan peta komunitas real-time dan dashboard pemantauan untuk pemerintah.
+Platform kesiapsiagaan komunitas: laporan indikasi bencana, pengamatan warga sekitar, keputusan pengelola yang tercatat, dan penerimaan responder.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -28,82 +28,134 @@ Platform pelaporan bencana berbasis foto dan AI untuk warga, dengan peta komunit
 - [Prasyarat (Prerequisites)](#prasyarat-prerequisites)
 - [Cara menjalankan (How to build & run)](#cara-menjalankan-how-to-build--run)
 - [Dua tampilan peta](#dua-tampilan-peta)
+- [Evaluasi model AI](#evaluasi-model-ai)
+- [Chatbot GEMA AI](#chatbot-gema-ai)
 - [Notifikasi responder Telegram](#notifikasi-responder-telegram)
 - [Deploy](#deploy)
 
+## Status implementasi FIK FAIR
+
+Perubahan kode untuk menangani ketidakpastian informasi tersedia di workspace. Laporan yang meragukan ditahan untuk tinjauan; AI hanya mengklasifikasikan isi foto. Warga memberi pengamatan, dan pengelola memutuskan dengan alasan serta audit.
+
+- [Hasil implementasi dan test](docs/fik-fair/hasil-implementasi.md)
+- [Konfigurasi, migrasi, dan operasi](docs/fik-fair/operasional.md)
+- [Indeks spesifikasi FIK FAIR](docs/fik-fair/README.md), [implementation.md](implementation.md), [revisi.md](revisi.md), [ui.md](ui.md)
+
+Migrasi/layanan publik belum diperbarui oleh perubahan workspace ini. Grouping incident, kemitraan resmi, serta evaluasi lapangan tetap roadmap.
+
 ## Demo
 
-Aplikasi sudah live (tidak perlu di-build untuk mencoba): **https://amusing-communication-production-abe3.up.railway.app/**
+Alamat deployment yang tercantum sebelumnya: https://amusing-communication-production-abe3.up.railway.app/. Perubahan baru belum dideploy atau diverifikasi pada alamat tersebut.
 
 ## Tujuan
 
-Aplikasi web yang membantu warga melaporkan indikasi bencana (banjir, tanah longsor, kebakaran) dari foto, melihat laporan komunitas lewat peta dan daftar, membaca panduan keselamatan di area berisiko, dan memberi konfirmasi soal kedatangan bantuan. Lihat [`PRD.md`](./PRD.md) untuk spesifikasi lengkap.
+GEMA membantu komunitas menghadapi informasi bencana yang belum pasti: membedakan laporan, waktu pengamatan, bukti langsung, informasi dari orang lain, hasil visual AI, keputusan pengelola, dan penerimaan responder. Fokus FIK FAIR: **Menembus Ketidakpastian: Inovasi Solutif untuk Komunitas Masa Depan**, dalam tema IGNITE dan SDG 9, 11, 13.
 
 ## Struktur
 
-```
-frontend/   Next.js — UI, peta, form laporan
-backend/    FastAPI (Python) — semua endpoint API
+```text
+frontend/                 Next.js, Leaflet, form, pengamatan, dashboard pengelola
+backend/                  FastAPI, auth, quota, kebijakan, worker
+backend/migrations/       001–010, termasuk data legacy, storage privat, dan retensi
+docs/fik-fair/            spesifikasi, hasil test, operasional, submission
 ```
 
 ## Prasyarat (Prerequisites)
 
-- Node.js 20 atau lebih baru, npm
-- Python 3.11 atau lebih baru, pip
-- Akun [Supabase](https://supabase.com) (Postgres + Storage) — untuk menjalankan sendiri, buat project baru dan jalankan migrasi di `backend/migrations/`
-- API key Gemini dari [Google AI Studio](https://aistudio.google.com/) untuk `MODEL_API_KEY`
-- (Opsional) Bot Telegram untuk fitur notifikasi responder — lihat bagian [Notifikasi responder Telegram](#notifikasi-responder-telegram)
+- Node 24 untuk menjalankan seluruh suite test frontend; Python 3.11+.
+- Supabase Auth, Postgres, dan Storage, dengan project staging untuk pemeriksaan awal.
+- Gemini opsional untuk analisis; jalur laporan manual tetap tersedia.
+- Telegram dan Web Push opsional, dikonfigurasi terpisah dari alur utama.
 
 ## Cara menjalankan (How to build & run)
 
-**Frontend:**
-```bash
-cd frontend
-npm install
-cp .env.example .env.local
-npm run dev
-```
-Buka http://localhost:3000.
+Jalankan migrasi yang belum diterapkan secara berurutan sampai **010**. Aktifkan anonymous sign-in, siapkan akun permanen dan role moderator, serta periksa bucket privat. Detail di [operasional](docs/fik-fair/operasional.md).
 
-**Backend:**
-```bash
-cd backend
-python -m venv .venv
-.venv/Scripts/activate   # Windows; `source .venv/bin/activate` di macOS/Linux
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
-Buka http://localhost:8000/health untuk cek server hidup.
+Salin contoh environment ke `backend/.env` dan `frontend/.env.local`, lalu isi di mesin Anda. Frontend memerlukan public Supabase URL/key; secret/service-role key hanya di backend.
 
-Sebelum menguji unggah laporan, jalankan file di `backend/migrations/` lewat Supabase SQL Editor secara berurutan: `001_initial.sql`, `002_severity_kritis.sql`, lalu `003_vote_functions.sql`, kemudian `004_telegram_responder.sql`. Untuk database yang sudah ada, jalankan migrasi yang belum diterapkan. Migrasi `002` wajib agar hasil AI dengan severity `kritis` bisa disimpan.
+Dari `backend/`:
+
+```powershell
+rtk proxy python -m venv .venv
+rtk proxy .venv/Scripts/python.exe -m pip install -r requirements.txt
+rtk proxy .venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000 --no-access-log
+```
+
+Dari `frontend/`:
+
+```powershell
+rtk proxy npm ci
+rtk proxy npm run dev
+```
+
+Buka http://localhost:3000; health backend http://localhost:8000/health. Setelah konfigurasi staging terverifikasi, aktifkan WORKER_ENABLED untuk outbox dan cleanup.
 
 ## Dua tampilan peta
 
-Beranda warga terbuka pada **Analisis AI**. Gunakan toggle **Kepadatan Laporan** untuk melihat jumlah pelapor unik dari laporan aktif 24 jam terakhir dalam kelompok radius 50 m: hijau 0, kuning 1–2, merah 3–9, hitam 10 atau lebih. Angka pada titik menunjukkan jumlah; ukuran titik bertambah seiring jumlah. Ini kepadatan laporan warga **belum diverifikasi**, bukan tingkat keparahan atau batas bahaya. Backend menghitung dari koordinat asli dan hanya mengirim pusat yang dibulatkan serta jumlah. Perubahan mode tidak mengubah aturan area perhatian AI.
+Beranda dibuka pada **Daftar**. Pilih **Peta**, lalu **Laporan dan status bukti** atau **Kepadatan pelapor**. Marker belum terkonfirmasi memakai warna netral. Lingkaran hanya menampilkan jangkauan informasi laporan terkonfirmasi: default 500 m/1 km/3 km/10 km, atau override pengelola.
+
+Kepadatan menghitung pelapor unik pada laporan aktif dalam kelompok 50 m, dengan warna biru dan angka. Tidak ada area kosong yang diberi label aman. Laporan berlaku 12 jam dari waktu pengamatan sebagai konfigurasi pilot; demo dan expired dikecualikan. Nearby mengambil kandidat sendiri di backend, dengan maksimal tiga notice, sehingga tidak bergantung 50 laporan pertama feed.
+
+## Evaluasi model AI
+
+Catatan spot-check berikut berasal dari dokumentasi sebelumnya dan dipertahankan sebagai riwayat. Perubahan ini tidak menjalankan ulang model pada foto tersebut atau menghasilkan benchmark baru.
+
+Model yang dipakai saat ini: `gemini-3.1-flash-lite` (lihat `backend/app/services/model.py`) — hanya prompting + skema keluaran terstruktur, **bukan model yang di-fine-tune**. Angka dan fakta pada jawaban chatbot maupun label laporan selalu diambil dari data Supabase yang sebenarnya; model hanya menafsirkan maksud/isi foto.
+
+Spot-check kecil (bukan benchmark statistik) memakai 3 foto di `backend/test/input/`, dengan ground truth ditentukan lewat tinjauan manual sebelum foto dikirim ke model:
+
+| Foto | Jenis (tinjauan manual) | Prediksi model | Keparahan model | Cocok? |
+|---|---|---|---|---|
+| `test1.jpeg` | Banjir | Banjir | Tinggi | ✅ |
+| `test2.jpeg` | Kebakaran | Kebakaran | Kritis | ✅ |
+| `test3.jpeg` | Tanah longsor | Tanah longsor | Tinggi | ✅ |
+
+Akurasi klasifikasi jenis bencana: 3/3 (100%). F1-score makro pada sampel ini: 1,0. **Catatan jujur:** n=3 dengan 1 sampel per kelas tidak cukup untuk mengukur performa secara statistik andal — ini demonstrasi cepat bahwa pipeline bekerja pada kasus yang jelas, bukan klaim benchmark formal. Untuk hasil yang benar-benar terukur, perlu set uji yang lebih besar dan beragam (termasuk foto ambigu/uncertain).
+
+## Chatbot GEMA AI
+
+Chatbot menjawab jumlah, daftar terbaru, dan ringkasan laporan aktif non-demo yang belum expired. Jawaban disusun dari data publik; AI menafsirkan maksud pertanyaan. Status bukti disebut per laporan, dan jumlah laporan tidak disamakan dengan jumlah kejadian unik. Chat memakai sesi Auth serta quota dan anggaran model bersama.
 
 ## Notifikasi responder Telegram
 
-Setelah migrasi `004_telegram_responder.sql`, isi `TELE_API` dan `TELE_CHAT_ID` yang sudah ada, lalu buat `TELEGRAM_WEBHOOK_SECRET` di `backend/.env`. Contoh membuat secret: `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Jangan masukkan nilai asli ke `.env.example` atau frontend.
+Publish menyimpan laporan dan event triase dalam transaksi; worker mengirim ke grup privat. Kesalahan provider yang diketahui dicoba ulang dengan backoff; hasil ambigu menjadi `unknown` dan memerlukan peninjauan pengelola.
 
-Saat laporan diterbitkan, backend mengirim ringkasan AI ke grup Telegram responder. Laporan tetap tersimpan jika pengiriman Telegram gagal; kegagalannya muncul di log backend. Tombol **TERIMA LAPORAN** mengubah `responder_status` menjadi `ACCEPTED`, dan tracker warga memeriksa pembaruan setiap 10 detik selama halaman terbuka. Penerimaan berarti pesan diterima anggota grup responder, bukan laporan sudah diverifikasi atau bantuan sudah tiba. Siapa pun yang dapat menekan tombol di grup tersebut bisa menerimanya; batasi keanggotaan grup sebelum memakai data nyata.
+Callback memeriksa secret, grup, pesan, dan pemetaan responder/role server. **ACCEPTED berarti laporan diterima responder.** Tracker memperbarui selama halaman aktif; prototipe belum menyimpan status berangkat/tiba.
 
-Telegram memerlukan URL backend HTTPS publik. Jalankan backend melalui deployment atau tunnel (misalnya ngrok/Cloudflare Tunnel), lalu daftarkan URL dasarnya dari direktori `backend/`:
+Konfigurasi bot, pendaftaran responder, dan webhook HTTPS dijelaskan pada [operasional](docs/fik-fair/operasional.md). Tidak ada pesan nyata yang dikirim pada test otomatis.
+
+## Pengamatan, draft, dan push
+
+Notice memakai kalimat “Ada laporan ... di sekitar lokasi Anda” atau “di area yang Anda pantau”. Pengguna dapat memilih melihat tanda, tidak melihat saat berada di lokasi, atau belum tahu; sumber langsung dan informasi orang lain dicatat terpisah. Jumlah jawaban tidak otomatis mengonfirmasi atau menghapus laporan.
+
+Draft disimpan sebelum AI. IndexedDB menyimpan draft lokal tujuh hari, dan mengirim draft yang sudah diajukan ketika aplikasi terbuka serta koneksi tersedia. Retry memakai idempotency key yang sama. Berkas maksimal 10 MiB, kompresi client, validasi/decode server, metadata dibersihkan, foto privat.
+
+Push memiliki service worker, VAPID, subscription, preferensi area, dan unsubscribe. Aktifkan setelah mengisi environment dan menguji provider. GPS browser tidak dipantau terus menerus saat web tertutup.
+
+## Pengujian
+
+Dari `backend/`:
 
 ```powershell
-.\.venv\Scripts\python.exe set_telegram_webhook.py https://NAMA-HOST-PUBLIK
+rtk proxy .venv/Scripts/python.exe -m unittest discover -s . -p test_*.py
+rtk proxy .venv/Scripts/python.exe test_rules.py
+rtk proxy .venv/Scripts/python.exe test_analyze.py
 ```
 
-URL webhook yang didaftarkan adalah `https://NAMA-HOST-PUBLIK/api/telegram/webhook`. Jika URL tunnel berubah, jalankan perintah itu lagi. Restart backend setelah mengubah `backend/.env`; frontend cukup dimuat ulang bila servernya sudah berjalan.
+Dari `frontend/`:
 
-Uji manual: buka frontend sebagai warga, unggah foto dan terbitkan laporan, pastikan satu pesan bertombol muncul di grup, buka `/track` pada browser pelapor yang sama, tekan tombol di Telegram, lalu tunggu maksimal sekitar 10 detik. Langkah **Menunggu kabar** dan **Petugas Menuju Lokasi** menjadi hijau; popup **LAPORAN DITERIMA PETUGAS MENUJU LOKASI** tampil sekali selama 10 detik. Muat ulang halaman: popup tidak muncul lagi. Tekan tombol lama dua kali atau oleh dua anggota: hanya penerimaan pertama yang dicatat.
+```powershell
+rtk proxy npm test
+rtk proxy npm run lint
+rtk proxy npm run build
+rtk proxy npx playwright install chromium
+rtk proxy npm run test:e2e
+```
+
+Test transaksi, migrasi legacy, dan konkurensi menggunakan PostgreSQL lokal disposable; petunjuk serta hasil pada [hasil implementasi](docs/fik-fair/hasil-implementasi.md). Test lokal bukan hasil uji pengguna atau integrasi layanan live.
 
 ## Deploy
 
-Live saat ini: **frontend dan backend sama-sama di [Railway](https://railway.com)**, sebagai dua service terpisah dalam satu project (root directory `frontend/` dan `backend/`). `backend/Procfile` sudah cukup untuk Railway auto-detect Python; frontend cukup `npm run build` + `npm start` (Railway auto-detect Next.js). Vercel juga bisa dipakai untuk frontend (root directory `frontend/`) kalau lebih nyaman — langkahnya sama, tinggal ganti host di checklist di bawah.
+Deployment sebelumnya menggunakan dua service Railway dengan root `frontend/` dan `backend/`. Untuk versi baru, terapkan migrasi dan konfigurasi Auth/role/storage di staging dahulu, lalu deploy backend dan frontend yang sesuai.
 
-Checklist supaya kedua sisi benar-benar bisa saling bicara setelah deploy:
-
-1. Di host frontend, set `NEXT_PUBLIC_API_URL` ke URL backend yang sudah live (bukan `localhost`).
-2. Di host backend, set `CORS_ORIGINS` ke URL frontend yang sudah live (bukan `localhost`) — request akan diblokir CORS kalau lupa ini.
-3. Pastikan `DEMO_MODE=false` di `.env` backend produksi, supaya laporan yang benar-benar dikirim juri tidak ikut ditandai sebagai data contoh.
-4. Isi `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, dan `MODEL_API_KEY` di `.env` backend produksi (nilai yang sama seperti `backend/.env.example`).
+Isi public API/Supabase environment saat build frontend; isi secret Supabase, CORS_ORIGINS, RATE_LIMIT_SALT, flag komunitas/worker, dan credential opsional pada backend. Gunakan DEMO_MODE=false serta NEXT_PUBLIC_DEMO_MODE=false pada produksi. Backend Procfile mematikan access log query lokasi. Ikuti [pemeriksaan staging](docs/fik-fair/operasional.md#6-pemeriksaan-staging-sebelum-pilot) sebelum mengklaim fitur live.

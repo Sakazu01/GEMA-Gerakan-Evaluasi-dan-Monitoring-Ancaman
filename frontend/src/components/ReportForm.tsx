@@ -1,324 +1,165 @@
 "use client";
-
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {useEffect,useRef,useState,type FormEvent} from "react";
 import Link from "next/link";
-import { Camera, ChevronLeft, Loader2 } from "lucide-react";
-import { AppHeader } from "@/components/AppHeader";
-import { LocationPicker } from "@/components/LocationPicker";
-import { NavDrawer } from "@/components/NavDrawer";
-import { ReportMap } from "@/components/ReportMap";
-import { disasterBadge, disasterGuides, severityMap, type MapLocation } from "@/lib/demo-reports";
-import { apiFetch } from "@/lib/api-client";
-import { requestDeviceLocation } from "@/lib/geolocation";
-import type { AnalyzeResponse, FireDetails, FloodDetails, ReportDetails } from "@/types/report";
+import {AppHeader} from "@/components/AppHeader";
+import {NavDrawer} from "@/components/NavDrawer";
+import {ReportMap} from "@/components/ReportMap";
+import {apiFetch,ApiError} from "@/lib/api-client";
+import {requestDeviceLocation} from "@/lib/geolocation";
+import {preparePhoto} from "@/lib/photo";
+import {deleteLocalDraft,listLocalDrafts,saveLocalDraft,submitLocalDraft,type LocalDraft} from "@/lib/offline-drafts";
+import {disasterNames,type MapLocation} from "@/lib/demo-reports";
+import type {DisasterType,DraftAnalysis,ReportDetails} from "@/types/report";
 
-const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+function localTime(iso?:string){const now=iso?new Date(iso):new Date();return new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,16);}
 
-export function ReportForm() {
-  const [step, setStep] = useState<"capture" | "review">("capture");
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [fileError, setFileError] = useState("");
-  const [error, setError] = useState("");
-  const [location, setLocation] = useState<MapLocation | null>(null);
-  const [locationLabel, setLocationLabel] = useState("");
-  const [locationMessage, setLocationMessage] = useState("Mencari lokasi perangkat...");
-  const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
-  const [analyzedAt, setAnalyzedAt] = useState<string | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submittedId, setSubmittedId] = useState<string | null>(null);
-  const [description, setDescription] = useState("");
-  const [waterDepth, setWaterDepth] = useState<FloodDetails["water_depth"]>(null);
-  const [current, setCurrent] = useState<FloodDetails["current"]>(null);
-  const [coveredArea, setCoveredArea] = useState<number | null>(null);
-  const [visibility, setVisibility] = useState<FireDetails["visibility"]>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const pickedManually = useRef(false);
-  const requestedLocation = useRef(false);
-
-  useEffect(() => () => {
-    if (photoUrl) URL.revokeObjectURL(photoUrl);
-  }, [photoUrl]);
-
-  useEffect(() => {
-    if (requestedLocation.current) return;
-    requestedLocation.current = true;
-    requestDeviceLocation(
-      (next) => {
-        if (pickedManually.current) return;
-        setLocation(next);
-        setLocationLabel(next.label);
-      },
-      (message) => { if (!pickedManually.current) setLocationMessage(message); },
-    );
-  }, []);
-
-  function chooseLocation(next: MapLocation) {
-    pickedManually.current = true;
-    setLocation(next);
-    setLocationLabel(next.label);
-    setLocationMessage("");
+export function ReportForm(){
+  const [id,setId]=useState(()=>crypto.randomUUID());
+  const [createdAt,setCreatedAt]=useState(()=>new Date().toISOString());
+  const [photo,setPhoto]=useState<File|null>(null);
+  const [preview,setPreview]=useState<string|null>(null);
+  const [source,setSource]=useState<LocalDraft["photoSource"]>("none");
+  const [type,setType]=useState<DisasterType>("flood");
+  const [time,setTime]=useState(localTime);
+  const [known,setKnown]=useState(true);
+  const [location,setLocation]=useState<MapLocation|null>(null);
+  const [locationLabel,setLocationLabel]=useState("");
+  const [description,setDescription]=useState("");
+  const [details,setDetails]=useState<ReportDetails|null>(null);
+  const [analysis,setAnalysis]=useState<DraftAnalysis|null>(null);
+  const [serverId,setServerId]=useState<string|undefined>();
+  const [drawer,setDrawer]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+  const [canRecreate,setCanRecreate]=useState(false);
+  const [message,setMessage]=useState("");
+  const [result,setResult]=useState<{id:string;status:string}|null>(null);
+  const [cameraOn,setCameraOn]=useState(false);
+  const stream=useRef<MediaStream|null>(null);
+  const video=useRef<HTMLVideoElement>(null);
+  const sending=useRef(false);
+  useEffect(()=>{if(!photo)return;const url=URL.createObjectURL(photo);const timer=setTimeout(()=>setPreview(url),0);return()=>{clearTimeout(timer);URL.revokeObjectURL(url);};},[photo]);
+  useEffect(()=>()=>stream.current?.getTracks().forEach(track=>track.stop()),[]);
+  useEffect(()=>{
+    const draftId=new URLSearchParams(window.location.search).get("draft");
+    if(!draftId)return;
+    let alive=true;
+    listLocalDrafts().then(all=>{
+      const draft=all.find(d=>d.id===draftId);if(!alive||!draft)return;
+      setId(draft.id);setCreatedAt(draft.createdAt);setPhoto(draft.photo);setSource(draft.photoSource);setType(draft.type);
+      setTime(draft.observedAt?localTime(draft.observedAt):localTime());setKnown(draft.timeKnown);setLocation(draft.location);
+      setLocationLabel(draft.locationLabel);setDescription(draft.description);setDetails(draft.details);setServerId(draft.serverId);setAnalysis(draft.analysis||null);
+      setMessage("Draft perangkat dibuka. Periksa kembali waktu dan lokasi sebelum mengirim.");
+    }).catch(cause=>{if(alive)setError(cause instanceof Error?cause.message:"Draft belum dapat dibuka");});
+    return()=>{alive=false;};
+  },[]);
+  function draft(queued=false):LocalDraft{return {id,photo,photoSource:source,type,observedAt:known?new Date(time).toISOString():null,timeKnown:known,location,locationLabel,description,details,createdAt,updatedAt:new Date().toISOString(),queued,serverId,analysis:analysis||undefined};}
+  function chooseLocation(next:MapLocation){setLocation(next);setLocationLabel(next.label);}
+  async function resetEvidence(){
+    // A failed submission may already have persisted a remote draft, even if React
+    // has not received its ID. Every evidence change therefore gets a fresh ID.
+    await deleteLocalDraft(id);setId(crypto.randomUUID());setCreatedAt(new Date().toISOString());
+    setServerId(undefined);setAnalysis(null);setCanRecreate(false);
   }
-
-  function choosePhoto(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    event.target.value = "";
-    setFileError("");
+  async function removePhoto(){
+    setBusy(true);setError("");
+    try{await resetEvidence();setPhoto(null);setPreview(null);setSource("none");}
+    catch(cause){setError(cause instanceof Error?cause.message:"Draft belum dapat diperbarui");}
+    finally{setBusy(false);}
+  }
+  async function choosePhoto(file:File,origin:"camera"|"gallery"){
+    setBusy(true);setError("");
+    try{const prepared=await preparePhoto(file);await resetEvidence();setPhoto(prepared);setSource(origin);}
+    catch(cause){setError(cause instanceof Error?cause.message:"Foto belum dapat dibaca");}finally{setBusy(false);}
+  }
+  async function startCamera(){
     setError("");
-    if (!file) return;
-    setPhoto(null);
-    setPhotoUrl(null);
-    setAnalysis(null);
-    if (!ALLOWED_TYPES.has(file.type)) {
-      setFileError("Pilih foto JPEG, PNG, atau WebP.");
-      return;
-    }
-    if (file.size === 0 || file.size > MAX_PHOTO_BYTES) {
-      setFileError("Ukuran foto maksimal 3 MB dan tidak boleh kosong.");
-      return;
-    }
-    setPhoto(file);
-    setPhotoUrl(URL.createObjectURL(file));
+    try{stream.current?.getTracks().forEach(track=>track.stop());stream.current=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});if(video.current)video.current.srcObject=stream.current;setCameraOn(true);}
+    catch{setError("Kamera belum dapat diakses. Berikan izin atau pilih foto yang tersedia.");}
   }
-
-  async function analyzePhoto() {
-    if (!photo) return;
-    setError("");
-    setAnalyzing(true);
-    try {
-      const formData = new FormData();
-      formData.append("photo", photo);
-      const result = await apiFetch<AnalyzeResponse>("/api/analyze", { method: "POST", body: formData });
-      if (result.validity === "relevant") {
-        setWaterDepth(null);
-        setCurrent(null);
-        setCoveredArea(null);
-        setVisibility(null);
-        setAnalyzedAt(new Date().toISOString());
-        setStep("review");
-      } else {
-        setError(result.reason || "Foto belum cukup jelas untuk dianalisis. Coba foto lain.");
-      }
-      setAnalysis(result);
-    } catch (cause) {
-      setError(cause instanceof Error && cause.name !== "TypeError"
-        ? cause.message
-        : "Tidak dapat menghubungi server analisis. Pastikan backend berjalan di port 8000.");
-    } finally {
-      setAnalyzing(false);
-    }
+  function capture(){
+    if(!video.current?.videoWidth)return;
+    const canvas=document.createElement("canvas");canvas.width=video.current.videoWidth;canvas.height=video.current.videoHeight;
+    canvas.getContext("2d")?.drawImage(video.current,0,0);
+    canvas.toBlob(blob=>{if(blob)void choosePhoto(new File([blob],"kamera.jpg",{type:"image/jpeg"}),"camera");},"image/jpeg",.9);
+    stream.current?.getTracks().forEach(track=>track.stop());setCameraOn(false);
   }
-
-  async function sendReport(event: FormEvent) {
-    event.preventDefault();
-    if (!location || !locationLabel.trim() || analysis?.validity !== "relevant") {
-      setError("Lengkapi lokasi kejadian sebelum mengirim.");
-      return;
-    }
-    const details: ReportDetails =
-      analysis.type === "flood"
-        ? { type: "flood", water_depth: waterDepth, current }
-        : analysis.type === "landslide"
-          ? { type: "landslide", covered_area_m2: coveredArea }
-          : { type: "fire", visibility };
-
-    setSubmitting(true);
-    setError("");
-    try {
-      const result = await apiFetch<{ id: string }>("/api/reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          draft_id: analysis.draft_id, lat: location.lat, lng: location.lng,
-          location_source: location.source ?? "demo", location_label: locationLabel.trim(),
-          description: description.trim() || null, details,
-        }),
-      });
-      setSubmittedId(result.id);
-    } catch {
-      setError("Laporan gagal dikirim. Data yang sudah diisi tetap ada, coba lagi.");
-    } finally {
-      setSubmitting(false);
-    }
+  async function save(){setError("");try{await saveLocalDraft(draft());setMessage("Draft tersimpan di perangkat. Belum terkirim.");}catch(cause){setError(cause instanceof Error?cause.message:"Draft gagal disimpan");}}
+  async function recreate(){
+    setBusy(true);setError("");
+    try{
+      const nextId=crypto.randomUUID(),now=new Date().toISOString();
+      await saveLocalDraft({...draft(),id:nextId,createdAt:now,updatedAt:now,serverId:undefined,analysis:undefined});
+      setId(nextId);setCreatedAt(now);setServerId(undefined);setAnalysis(null);setCanRecreate(false);
+      await deleteLocalDraft(id);
+      setMessage("Draft baru tersimpan di perangkat. Waktu pengamatan asli tetap dipakai. Periksa kembali sebelum mengirim.");
+    }catch(cause){setError(cause instanceof Error?cause.message:"Draft baru belum dapat dibuat. Data tetap tersedia.");}
+    finally{setBusy(false);}
   }
-
-  if (submittedId) {
-    return (
-      <div className="min-h-dvh bg-[#F7F6E4]">
-        <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
-        <div className="mx-auto max-w-md space-y-4 p-6 text-center">
-          <h1 className="text-xl font-bold text-slate-950">Laporan warga berhasil diterbitkan</h1>
-          <p className="text-slate-700">Informasi belum diverifikasi petugas.</p>
-          <div className="flex flex-col gap-3">
-            <Link href="/" className="min-h-11 rounded-lg bg-[#0D5D3A] px-4 py-2 font-semibold text-white">Lihat di beranda</Link>
-            <Link href={`/report/${submittedId}`} className="min-h-11 rounded-lg border border-[#0D5D3A] px-4 py-2 font-semibold text-[#0D5D3A]">Lihat detail laporan</Link>
-          </div>
-        </div>
-        <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      </div>
-    );
+  async function analyze(){
+    setBusy(true);setError("");setMessage("");
+    try{
+      let current=draft();await saveLocalDraft(current);
+      if(!current.serverId){const body=new FormData();body.append("client_id",current.id);if(current.photo)body.append("photo",current.photo,current.photo.name);
+        const created=await apiFetch<{draft_id:string}>("/api/reports/drafts",{method:"POST",body});current={...current,serverId:created.draft_id};setServerId(created.draft_id);await saveLocalDraft(current);}
+      const output=await apiFetch<DraftAnalysis>(`/api/reports/drafts/${current.serverId}/analyze`,{method:"POST"});setAnalysis(output);
+      await saveLocalDraft({...current,analysis:output});setMessage(output.ai_status==="relevant"?"Analisis visual tersedia. Waktu, sumber, dan lokasi tetap perlu diperiksa.":"Analisis tidak memastikan kejadian. Draft tersimpan dan dapat diajukan untuk tinjauan.");
+    }catch(cause){setError(cause instanceof Error?cause.message:"Analisis belum tersedia; Anda tetap dapat menyimpan atau mengajukan draft.");}finally{setBusy(false);}
   }
-
-  // Layar 1-2 wireframe: ambil/pilih foto, lalu pratinjau sebelum dianalisis.
-  if (step === "capture") {
-    return (
-      <div className="flex min-h-dvh flex-col bg-[#0D5D3A]">
-        <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
-        <input ref={cameraInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
-          onChange={choosePhoto} className="hidden" />
-        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-          onChange={choosePhoto} className="hidden" />
-        <div className="relative flex-1">
-          {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- pratinjau file lokal, bukan aset statis.
-            <img src={photoUrl} alt="Pratinjau foto laporan" className="absolute inset-0 h-full w-full object-cover" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#0D5D3A]">
-              <p className="px-8 text-center text-white/80">Ketuk tombol di bawah untuk mengambil atau memilih foto kejadian.</p>
-            </div>
+  async function send(event:FormEvent){
+    event.preventDefault();if(sending.current)return;
+    if(!location||!locationLabel.trim()){setError("Lengkapi lokasi kejadian.");return;}
+    sending.current=true;setBusy(true);setError("");setMessage("");setCanRecreate(false);
+    try{
+      const current=draft(true);await saveLocalDraft(current);
+      if(!navigator.onLine){setMessage("Draft tersimpan di perangkat dan menunggu koneksi. Belum terkirim.");return;}
+      setResult(await submitLocalDraft(current));
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:"Laporan belum terkirim. Draft perangkat tetap tersedia untuk dicoba kembali.");
+      setCanRecreate(cause instanceof ApiError&&["report_not_found","draft_expired"].includes(cause.code||""));
+      // Submission/expiry recovery may have persisted a newer server ID before
+      // the final request failed. Keep it for an identical retry in this form.
+      try{const retained=(await listLocalDrafts()).find(item=>item.id===id);if(retained){setServerId(retained.serverId);setAnalysis(retained.analysis||null);}}
+      catch{/* Preserve the original submission error if local storage is unavailable. */}
+    }
+    finally{sending.current=false;setBusy(false);}
+  }
+  if(result)return <main className="mx-auto max-w-2xl space-y-4 p-6"><h1 className="text-2xl font-bold">Laporan tercatat</h1><p>{result.status==="held"?"Laporan tersimpan dan sedang ditinjau. Belum ditampilkan kepada warga sekitar.":"Status: belum dikonfirmasi."}</p><Link className="gema-button" href="/track">Buka laporan saya</Link><Link className="gema-button-secondary" href="/">Beranda</Link></main>;
+  return <div className="min-h-dvh"><AppHeader open={drawer} onMenuClick={()=>setDrawer(true)}/>
+    <main className="mx-auto max-w-3xl p-4 pb-24"><Link className="gema-link" href="/">Kembali ke beranda</Link><h1 className="my-4 text-2xl font-bold">Buat laporan indikasi bencana</h1>
+      <form onSubmit={send} className="space-y-5">
+        <section className="gema-card space-y-3"><h2 className="text-lg font-bold">Bukti yang Anda miliki</h2><p className="text-sm text-slate-700">Foto opsional. AI membantu membaca isi foto, bukan membuktikan waktu, lokasi, atau keaslian berita.</p>
+          <video ref={video} autoPlay playsInline muted className={cameraOn?"max-h-80 w-full rounded-lg":"hidden"}/>
+          {preview&&photo&&!cameraOn&&(
+            // eslint-disable-next-line @next/next/no-img-element -- preview of a private local file.
+            <img src={preview} alt="Pratinjau foto laporan" className="max-h-80 w-full rounded-lg object-contain"/>
           )}
-          {photoUrl && !analyzing && (
-            <p className="absolute left-0 right-0 top-3 bg-black/30 py-1 text-center text-sm text-white">
-              Pastikan kamera anda stabil
-            </p>
-          )}
-          {analyzing && (
-            <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 text-white">
-              <Loader2 aria-hidden="true" size={40} className="animate-spin" />
-              <p className="font-semibold">Menganalisis foto…</p>
-              <p className="px-8 text-center text-sm text-white/80">Sistem sedang memeriksa jenis dan tingkat keparahan bencana dari foto.</p>
-            </div>
-          )}
-        </div>
-        {fileError && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{fileError}</p>}
-        {error && <p role="alert" className="bg-red-100 p-2 text-center font-medium text-red-900">{error}</p>}
-        <div className="flex items-center justify-between gap-3 bg-[#0D5D3A] px-6 pt-6">
-          <Link href="/" aria-label="Kembali ke beranda" className="flex min-h-11 min-w-11 items-center justify-center text-white">
-            <ChevronLeft aria-hidden="true" size={28} />
-          </Link>
-          <button type="button" disabled={analyzing} aria-label="Ambil foto"
-            onClick={() => cameraInputRef.current?.click()}
-            className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/60 bg-white disabled:bg-slate-300">
-            <Camera aria-hidden="true" className="text-[#0D5D3A]" size={26} />
-          </button>
-          <button type="button" disabled={analyzing} onClick={() => fileInputRef.current?.click()}
-            className="min-h-11 rounded-lg border border-white px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">
-            Pilih foto
-          </button>
-        </div>
-        <div className="bg-[#0D5D3A] px-6 pb-12 pt-4 text-center">
-          <p className="text-sm text-white/80">JPEG, PNG, atau WebP. Maksimal 3 MB.</p>
-          {photo && <button type="button" disabled={analyzing} onClick={analyzePhoto}
-            className="mt-3 min-h-11 w-full rounded-lg bg-white px-4 py-2 font-semibold text-[#0D5D3A] disabled:opacity-60">
-            {analyzing ? "Menganalisis foto..." : "Analisis foto"}
-          </button>}
-        </div>
-        <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      </div>
-    );
-  }
-
-  // Layar 3-5 wireframe: "Hasil Identifikasi", field beda per jenis bencana.
-  const relevant = analysis?.validity === "relevant" ? analysis : null;
-  const badge = relevant ? disasterBadge[relevant.type] : null;
-  const severity = relevant ? severityMap[relevant.severity] : null;
-  const guide = relevant ? disasterGuides[relevant.type] : null;
-  return (
-    <div className="min-h-dvh bg-[#F7F6E4]">
-      <AppHeader open={drawerOpen} onMenuClick={() => setDrawerOpen(true)} />
-      <form onSubmit={sendReport} className="mx-auto max-w-md space-y-4 p-4">
-        <button type="button" onClick={() => setStep("capture")} className="flex min-h-11 items-center gap-1 font-bold text-[#0D5D3A]">
-          <ChevronLeft aria-hidden="true" size={22} /> Hasil Identifikasi
-        </button>
-
-        {badge && relevant && severity && guide && (
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold text-white" style={{ background: badge.bg }}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- ikon PNG kecil, next/image tidak perlu di sini. */}
-                <img src={badge.icon} alt="" width={16} height={16} /> {badge.label}
-              </span>
-              <span className="rounded-full px-3 py-1 text-sm font-bold" style={{ background: severity.color, color: severity.textColor }}>
-                {severity.label}
-              </span>
-            </div>
-            <p className="mt-3 text-sm text-slate-700">
-              {locationLabel || "Lokasi belum dipilih"}, {analyzedAt && new Date(analyzedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
-            </p>
-            <p className="mt-3 text-sm text-slate-700">{relevant.summary}</p>
-            <p className="mt-3 font-semibold text-slate-900">{guide.headline} — yang perlu dilakukan:</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-800">
-              {guide.do.map((tip) => <li key={tip}>{tip}</li>)}
-            </ul>
-          </div>
-        )}
-
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <LocationPicker location={location} message={locationMessage} />
-          <div className="mt-3">
-            <ReportMap reports={[]} location={location} onPickLocation={chooseLocation} pickerOnly />
-          </div>
-        </div>
-
-        {relevant?.type === "flood" && (
-          <fieldset className="rounded-lg border border-slate-200 bg-white p-4">
-            <legend className="px-1 font-bold text-slate-900">Tinggi air saat ini</legend>
-            {([["<30cm", "Semata kaki (<30 cm)"], ["30-100cm", "Selutut (30–100 cm)"], [">100cm", "Sepinggang atau lebih (>100 cm)"]] as const).map(([value, label]) => (
-              <label key={value} className="mt-2 flex min-h-11 items-center gap-2 text-slate-900">
-                <input type="radio" name="water_depth" checked={waterDepth === value} onChange={() => setWaterDepth(value)} /> {label}
-              </label>
-            ))}
-            <legend className="mt-3 px-1 font-bold text-slate-900">Arus air</legend>
-            {([["tenang", "Tenang"], ["deras", "Deras"]] as const).map(([value, label]) => (
-              <label key={value} className="mt-2 flex min-h-11 items-center gap-2 text-slate-900">
-                <input type="radio" name="current" checked={current === value} onChange={() => setCurrent(value)} /> {label}
-              </label>
-            ))}
-          </fieldset>
-        )}
-        {relevant?.type === "fire" && (
-          <fieldset className="rounded-lg border border-slate-200 bg-white p-4">
-            <legend className="px-1 font-bold text-slate-900">Jarak pandang akibat asap</legend>
-            {([["jelas", "Jelas"], ["terbatas", "Terbatas"], ["sangat_rendah", "Sangat rendah"]] as const).map(([value, label]) => (
-              <label key={value} className="mt-2 flex min-h-11 items-center gap-2 text-slate-900">
-                <input type="radio" name="visibility" checked={visibility === value} onChange={() => setVisibility(value)} /> {label}
-              </label>
-            ))}
-          </fieldset>
-        )}
-        {relevant?.type === "landslide" && (
-          <fieldset className="rounded-lg border border-slate-200 bg-white p-4">
-            <legend className="px-1 font-bold text-slate-900">Perkiraan luas area tertutup</legend>
-            {([[10, "Kecil (sekitar 10 m²)"], [50, "Sedang (sekitar 50 m²)"], [150, "Luas (lebih dari 100 m²)"]] as const).map(([value, label]) => (
-              <label key={value} className="mt-2 flex min-h-11 items-center gap-2 text-slate-900">
-                <input type="radio" name="covered_area" checked={coveredArea === value} onChange={() => setCoveredArea(value)} /> {label}
-              </label>
-            ))}
-            <label className="mt-2 flex min-h-11 items-center gap-2 text-slate-900">
-              <input type="radio" name="covered_area" checked={coveredArea === null} onChange={() => setCoveredArea(null)} /> Tidak tahu
-            </label>
-          </fieldset>
-        )}
-
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <label htmlFor="description" className="block font-bold text-slate-900">Deskripsikan kondisi bencana (opsional)</label>
-          <textarea id="description" maxLength={500} rows={3} value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Deskripsi"
-            className="mt-2 w-full rounded-lg border border-slate-300 p-2 text-slate-900" />
-        </div>
-
-        {error && <p role="alert" className="font-medium text-red-800">{error}</p>}
-        <button type="submit" disabled={submitting}
-          className="min-h-11 w-full rounded-lg bg-[#0D5D3A] font-semibold text-white disabled:opacity-60">
-          {submitting ? "Laporan sedang dikirim…" : "Unggah"}
-        </button>
+          <div className="flex flex-wrap gap-3"><button type="button" className="gema-button-secondary" disabled={busy} onClick={cameraOn?capture:startCamera}>{cameraOn?"Ambil foto":"Nyalakan kamera"}</button><label className="gema-button-secondary">Pilih foto<input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e=>{if(e.target.files?.[0])void choosePhoto(e.target.files[0],"gallery");}}/></label>{photo&&<button type="button" className="gema-button-secondary" disabled={busy} onClick={()=>void removePhoto()}>Lanjut tanpa foto</button>}</div>
+          <p className="text-sm">JPEG, PNG, atau WebP, maksimal 10 MB. Foto akan dikompresi.</p>
+          {photo&&<><label className="block">Sumber foto<select className="gema-input mt-1" value={source} onChange={e=>setSource(e.target.value as LocalDraft["photoSource"])}><option value="camera">Kamera saya</option><option value="gallery">Galeri saya</option><option value="forwarded">Diteruskan / dari berita atau orang lain</option></select></label><button type="button" className="gema-button-secondary" disabled={busy} onClick={analyze}>Analisis foto (opsional)</button></>}
+          {analysis&&<div className="rounded-lg bg-slate-100 p-3"><p>Hasil visual: {analysis.ai_status==="relevant"?"relevan dengan indikasi bencana":"belum cukup untuk klasifikasi"}</p>{analysis.type&&<p>Jenis menurut AI: {disasterNames[analysis.type]}</p>}{analysis.severity&&<p>Indikasi visual: {analysis.severity}</p>}{analysis.summary&&<p>{analysis.summary}</p>}<p className="text-sm">Hasil ini tidak mengonfirmasi kejadian saat ini.</p></div>}
+        </section>
+        <section className="gema-card space-y-4"><h2 className="text-lg font-bold">Konteks kejadian</h2>
+          <label className="block">Jenis menurut pelapor<select className="gema-input mt-1" value={type} onChange={e=>{setType(e.target.value as DisasterType);setDetails(null);}}><option value="flood">Banjir</option><option value="landslide">Longsor</option><option value="fire">Kebakaran</option></select></label>
+          <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={known} onChange={e=>setKnown(e.target.checked)}/>Saya mengetahui waktu pengamatan</label>
+          {known?<label className="block">Diamati kapan? (waktu lokal perangkat)<input className="gema-input mt-1" type="datetime-local" required value={time} onChange={e=>setTime(e.target.value)}/></label>:<p className="text-sm">Waktu tidak diketahui: laporan akan ditinjau dahulu.</p>}
+          <p className="text-sm text-slate-700">Waktu pengamatan berbeda dari waktu unggah. Kamera baru juga dapat memotret berita lama.</p>
+          <label className="block">Keterangan (opsional)<textarea className="gema-input mt-1" maxLength={500} value={description} onChange={e=>setDescription(e.target.value)}/></label>
+          {type==="flood"&&<label className="block">Perkiraan tinggi air<select className="gema-input mt-1" value={details?.type==="flood"?details.water_depth||"":""
+          } onChange={e=>setDetails({type:"flood",water_depth:(e.target.value||null) as "<30cm"|"30-100cm"|">100cm"|null,current:details?.type==="flood"?details.current:null})}><option value="">Tidak tahu</option><option value="<30cm">Di bawah 30 cm</option><option value="30-100cm">30–100 cm</option><option value=">100cm">Di atas 100 cm</option></select></label>}
+          {type==="flood"&&<label className="block">Arus air<select className="gema-input mt-1" value={details?.type==="flood"?details.current||"":""} onChange={e=>setDetails({type:"flood",current:(e.target.value||null) as "tenang"|"deras"|null,water_depth:details?.type==="flood"?details.water_depth:null})}><option value="">Tidak tahu</option><option value="tenang">Tenang</option><option value="deras">Deras</option></select></label>}
+          {type==="landslide"&&<label className="block">Perkiraan luas tertutup m² (opsional)<input className="gema-input mt-1" type="number" min={1} max={100000} value={details?.type==="landslide"?details.covered_area_m2||"":""
+          } onChange={e=>setDetails({type:"landslide",covered_area_m2:e.target.value?Number(e.target.value):null})}/></label>}
+          {type==="fire"&&<label className="block">Jarak pandang akibat asap<select className="gema-input mt-1" value={details?.type==="fire"?details.visibility||"":""
+          } onChange={e=>setDetails({type:"fire",visibility:(e.target.value||null) as "jelas"|"terbatas"|"sangat_rendah"|null})}><option value="">Tidak tahu</option><option value="jelas">Jelas</option><option value="terbatas">Terbatas</option><option value="sangat_rendah">Sangat rendah</option></select></label>}
+        </section>
+        <section className="gema-card space-y-3"><h2 className="text-lg font-bold">Lokasi kejadian</h2><p>Lokasi kejadian bisa berbeda dari lokasi perangkat Anda. Periksa titik sebelum mengirim.</p><button type="button" className="gema-button-secondary" onClick={()=>requestDeviceLocation(chooseLocation,setMessage)}>Gunakan lokasi perangkat</button><ReportMap reports={[]} location={location} onPickLocation={chooseLocation} pickerOnly/>
+          <label className="block">Nama area<input className="gema-input mt-1" required maxLength={100} value={locationLabel} onChange={e=>setLocationLabel(e.target.value)}/></label>
+        </section>
+        <section className="gema-card space-y-3"><h2 className="font-bold">Periksa sebelum mengirim</h2><p>{disasterNames[type]} di {locationLabel||"area belum dipilih"}. {known?`Diamati ${time.replace("T"," ")} (waktu perangkat).`:"Waktu belum diketahui."} Sumber: {photo?source:"laporan manual"}.</p><p className="text-sm">Laporan dapat masuk tinjauan sebelum ditampilkan. Jumlah pengamatan tidak otomatis menentukan kebenaran.</p></section>
+        {error&&<p role="alert" className="rounded-lg bg-red-50 p-3 text-red-800">{error}</p>}{message&&<p role="status" className="rounded-lg bg-slate-100 p-3">{message}</p>}
+        {canRecreate&&<section className="gema-card space-y-3"><p>Data perangkat masih tersedia. Periksa <Link className="gema-link" href="/track">Laporan Saya</Link> terlebih dahulu agar laporan yang sudah diterima tidak diajukan lagi. Jika belum tercatat, buat draft baru lalu periksa waktu dan lokasinya.</p><button type="button" className="gema-button-secondary" disabled={busy} onClick={()=>void recreate()}>Buat draft baru dari data ini</button></section>}
+        <div className="flex flex-wrap gap-3"><button type="button" className="gema-button-secondary" disabled={busy} onClick={save}>Simpan draft di perangkat</button><button type="submit" className="gema-button" disabled={busy}>{busy?"Memproses…":"Kirim laporan"}</button></div>
       </form>
-      <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </div>
-  );
+    </main><NavDrawer open={drawer} onClose={()=>setDrawer(false)}/></div>;
 }

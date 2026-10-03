@@ -1,156 +1,82 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import Link from "next/link";
-import { Building2, ChevronLeft, Clock, Flame, MapPin, Mountain, Users, Waves } from "lucide-react";
-import { Card } from "@/components/ui/Card";
-import { apiFetch } from "@/lib/api-client";
-import { disasterBadge, disasterNames, escalationTarget, helpResponseLabel, severityMap } from "@/lib/demo-reports";
-import type { Report } from "@/types/report";
+import {apiFetch,ApiError} from "@/lib/api-client";
+import {authClient} from "@/lib/auth";
+import {disasterNames} from "@/lib/demo-reports";
+import {reportsChanged} from "@/lib/demo-report-context";
+import {EvidenceBadge} from "@/components/ui/EvidenceBadge";
+import {DataStatePanel} from "@/components/ui/DataStatePanel";
+import {ObservationForm} from "@/components/ObservationForm";
+import type {Report} from "@/types/report";
+import {riskLabels} from "@/lib/report-labels";
 
-// Warna kartu "Kabar bantuan" mengikuti tingkat kepastian help_status yang sudah dihitung backend.
-const helpTone: Record<Report["help_status"], { box: string; text: string }> = {
-  belum_ada_konfirmasi: { box: "border-slate-200 bg-slate-50", text: "text-slate-800" },
-  belum_terlihat: { box: "border-amber-200 bg-amber-50", text: "text-amber-900" },
-  terlihat: { box: "border-emerald-200 bg-emerald-50", text: "text-emerald-900" },
-};
-
-const helpHeadline: Record<Report["help_status"], string> = {
-  belum_ada_konfirmasi: "Belum ada konfirmasi warga yang cukup",
-  belum_terlihat: "Ada warga yang melaporkan bantuan belum terlihat",
-  terlihat: "Bantuan dilaporkan terlihat oleh warga",
-};
-
-export function ReportDetail({ id }: { id: string }) {
-  const [report, setReport] = useState<Report | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount standar.
+export function ReportDetail({id}:{id:string}) {
+  const [report,setReport]=useState<Report|null>(null);
+  const [loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null);
+  const [updatedAt,setUpdatedAt]=useState<string|null>(null);
+  const [own,setOwn]=useState(false),[photo,setPhoto]=useState<string|null>(null);
+  const [ownContext,setOwnContext]=useState<{description:string|null;risk_flags:string[];photo_unavailable?:boolean}|null>(null);
+  const [observe,setObserve]=useState(false),[abuse,setAbuse]=useState(false);
+  const [reason,setReason]=useState(""),[category,setCategory]=useState("old_photo");
+  const [message,setMessage]=useState(""),[busy,setBusy]=useState(false);
+  const requestVersion=useRef(0);
+  const load=useCallback(async()=>{
+    const version=++requestVersion.current;
     setLoading(true);
-    setNotFound(false);
-    apiFetch<Report>(`/api/reports/${id}`)
-      .then((data) => {
-        if (!cancelled) setReport(data);
-      })
-      .catch(() => {
-        if (!cancelled) setNotFound(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 pb-28 pt-8 sm:px-6">
-        <p role="status" className="text-slate-700">Memuat detail laporan…</p>
-      </main>
-    );
-  }
-
-  if (notFound || !report) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 pb-28 pt-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-slate-950">Laporan tidak tersedia</h1>
-        <p className="mt-2 text-slate-700">
-          Laporan ini belum aktif, sudah disembunyikan karena sanggahan, atau tidak ditemukan.
-        </p>
-        <Link href="/" className="mt-3 inline-flex min-h-11 items-center gap-1 font-bold text-[#0D5D3A]">
-          <ChevronLeft aria-hidden="true" size={22} /> Kembali ke beranda
-        </Link>
-      </main>
-    );
-  }
-
-  const badge = disasterBadge[report.type];
-  const severity = severityMap[report.severity];
-  const tone = helpTone[report.help_status];
-
-  return (
-    <main className="mx-auto max-w-3xl px-4 pb-28 pt-6 sm:px-6">
-      <Link href="/" className="inline-flex min-h-11 items-center gap-1 font-bold text-[#0D5D3A]">
-        <ChevronLeft aria-hidden="true" size={22} /> Kembali ke beranda
-      </Link>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold text-white" style={{ background: badge.bg }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- ikon PNG kecil, konsisten dengan badge di ReportForm. */}
-          <img src={badge.icon} alt="" width={16} height={16} /> {badge.label}
-        </span>
-        <span className="rounded-full px-3 py-1 text-sm font-bold" style={{ background: severity.color, color: severity.textColor }}>
-          {severity.label}
-        </span>
-      </div>
-
-      <h1 className="mt-3 text-2xl font-bold text-slate-950">
-        {disasterNames[report.type]} di {report.location_label}
-      </h1>
-      <p className="mt-1 text-sm text-slate-600">Laporan warga — belum diverifikasi</p>
-
-      <Card className="mt-5 border-slate-200">
-        <h2 className="font-bold text-slate-900">Ringkasan berdasarkan foto</h2>
-        <p className="mt-1 text-slate-800">{report.ai_summary}</p>
-        {report.description && <p className="mt-2 italic text-slate-700">&ldquo;{report.description}&rdquo;</p>}
-
-        <div className="mt-4 space-y-3 border-t border-slate-100 pt-4 text-sm">
-          <div className="flex items-start gap-2 text-slate-800">
-            <MapPin aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-slate-500" />
-            <span>{report.location_label}</span>
-          </div>
-          <div className="flex items-start gap-2 text-slate-800">
-            <Clock aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-slate-500" />
-            <span>{report.published_at && new Date(report.published_at).toLocaleString("id-ID", {
-              timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short",
-            })} WIB</span>
-          </div>
-          {report.details?.type === "flood" && (
-            <div className="flex items-start gap-2 text-slate-800">
-              <Waves aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-slate-500" />
-              <span>Kedalaman: {report.details.water_depth ?? "Tidak tahu"} · Arus: {report.details.current ?? "Tidak tahu"}</span>
-            </div>
-          )}
-          {report.details?.type === "landslide" && (
-            <div className="flex items-start gap-2 text-slate-800">
-              <Mountain aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-slate-500" />
-              <span>Perkiraan luas tertutup: {report.details.covered_area_m2 == null ? "Tidak tahu" : `${report.details.covered_area_m2} m²`}</span>
-            </div>
-          )}
-          {report.details?.type === "fire" && (
-            <div className="flex items-start gap-2 text-slate-800">
-              <Flame aria-hidden="true" size={18} className="mt-0.5 shrink-0 text-slate-500" />
-              <span>Jarak pandang akibat asap: {report.details.visibility === "sangat_rendah" ? "Sangat rendah" : report.details.visibility ?? "Tidak tahu"}</span>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <div className={`mt-4 rounded-lg border p-4 ${tone.box}`}>
-        <h2 className={`flex items-center gap-2 font-bold ${tone.text}`}>
-          <Users aria-hidden="true" size={18} /> Kabar bantuan
-        </h2>
-        <p className={`mt-1 text-sm ${tone.text}`}>
-          {helpHeadline[report.help_status]} ({helpResponseLabel[report.help_status]})
-        </p>
-      </div>
-
-      <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="flex items-center gap-2 font-bold text-slate-900">
-          <Building2 aria-hidden="true" size={18} /> Target eskalasi
-        </h2>
-        <p className="mt-1 text-sm text-slate-800">
-          {severity.radiusLabel ? `Radius peringatan ${severity.radiusLabel.replace("radius ", "")} — ` : "Tanpa radius peringatan — "}
-          {escalationTarget[report.severity]}.
-        </p>
-        <p className="mt-2 text-xs text-slate-500">
-          Referensi jalur eskalasi berdasarkan tingkat keparahan — bukan notifikasi yang benar-benar terkirim ke instansi manapun.
-        </p>
-      </div>
-    </main>
-  );
+    try{
+      const mine=new URLSearchParams(window.location.search).get("mine")==="1";setOwn(mine);
+      if(mine){const data=await apiFetch<{report:Report;photo_url:string|null;description:string|null;risk_flags:string[];photo_unavailable?:boolean}>(`/api/my-reports/${id}`);if(version!==requestVersion.current)return;setReport(data.report);setPhoto(data.photo_url);setOwnContext(data);}
+      else {const data=await apiFetch<Report>(`/api/reports/${id}`);if(version!==requestVersion.current)return;setReport(data);setPhoto(null);setOwnContext(null);}
+      setError(null);setUpdatedAt(new Date().toISOString());
+    }catch(cause){if(version!==requestVersion.current)return;if(cause instanceof ApiError&&[401,403,404].includes(cause.status)){setReport(null);setPhoto(null);setOwnContext(null);setUpdatedAt(null);}setError(cause instanceof ApiError&&cause.status===404?"Laporan tidak tersedia pada tampilan ini. Pemilik dapat membukanya melalui Laporan Saya.":cause instanceof Error?cause.message:"Data belum dapat dimuat");}finally{if(version===requestVersion.current)setLoading(false);}
+  },[id]);
+  useEffect(()=>{
+    const requestState=requestVersion;
+    const changed=()=>{if(document.visibilityState==="visible")void load();};
+    const first=setTimeout(changed,0),timer=setInterval(changed,30000);
+    window.addEventListener("gema:reports-changed",changed);
+    let unsubscribe:(()=>void)|undefined;
+    if(new URLSearchParams(window.location.search).get("mine")==="1"){
+      try{
+        const {data:{subscription}}=authClient().auth.onAuthStateChange(event=>{
+          if(event==="SIGNED_OUT"){
+            requestVersion.current++;setReport(null);setPhoto(null);setOwnContext(null);setUpdatedAt(null);setLoading(false);
+            setError("Sesi berakhir. Masuk kembali untuk membuka laporan Anda.");
+          }
+        });
+        unsubscribe=()=>subscription.unsubscribe();
+      }catch{/* The request displays the missing-session error. */}
+    }
+    return()=>{requestState.current++;clearTimeout(first);clearInterval(timer);window.removeEventListener("gema:reports-changed",changed);unsubscribe?.();};
+  },[load]);
+  async function complain(){setBusy(true);setMessage("");try{await apiFetch(`/api/reports/${id}/abuse`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({category,reason})});setMessage("Pengaduan tersimpan untuk ditinjau. Laporan tidak dihapus otomatis.");setAbuse(false);reportsChanged();await load();}catch(cause){setMessage(cause instanceof Error?cause.message:"Pengaduan belum tersimpan");}finally{setBusy(false);}}
+  return <main className="mx-auto max-w-3xl space-y-5 p-4 pb-24">
+    <Link className="gema-link" href={own?"/track":"/"}>Kembali</Link>
+    <DataStatePanel loading={loading} error={error} updatedAt={updatedAt} retry={()=>void load()}/>
+    {report?.id===id&&<><section className="gema-card space-y-3"><EvidenceBadge report={report}/>{report.is_demo&&<p className="font-bold">Data simulasi</p>}<h1 className="text-2xl font-bold">{disasterNames[report.type]} — {report.location_label}</h1>
+      <p>{report.observed_at?`Diamati ${new Date(report.observed_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"})} WIB`:"Waktu pengamatan tidak diketahui"}</p>
+      <p>{report.ai_summary||"Laporan warga; hasil analisis visual belum tersedia."}</p>
+      <p className="text-sm">Indikasi visual AI: {report.severity||"belum tersedia"}. Ini bukan penilaian risiko resmi atau pembuktian keaslian foto.</p>
+      {report.public_verification_note&&<div className="rounded-lg bg-slate-100 p-3"><h2 className="font-bold">Catatan pengelola</h2><p>{report.public_verification_note}</p></div>}
+      {report.verified_at&&<p className="text-sm">Konfirmasi pengelola: {new Date(report.verified_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta"})} WIB</p>}
+      {own&&ownContext&&<><p>Keterangan Anda: {ownContext.description||"tidak diisi"}</p>{ownContext.risk_flags.length>0&&<p>Hal yang perlu ditinjau: {ownContext.risk_flags.map(flag=>riskLabels[flag]||flag).join(", ")}. Ini bukan kesimpulan bahwa laporan palsu.</p>}{ownContext.photo_unavailable&&<p>Foto belum dapat dimuat; coba perbarui data.</p>}</>}
+      {own&&photo&&(
+        // eslint-disable-next-line @next/next/no-img-element -- private expiring owner-only preview.
+        <img src={photo} alt="Foto laporan Anda" className="max-h-80 w-full object-contain"/>
+      )}
+      <p>Status responder: <strong>{report.responder_status==="ACCEPTED"?"Laporan diterima responder":"Menunggu penerimaan responder"}</strong></p>
+      <p className="text-sm">Penerimaan tidak berarti responder sudah berangkat atau kejadian sudah diverifikasi.</p>
+    </section>
+    <section className="gema-card space-y-3"><h2 className="text-lg font-bold">Pengamatan terbaru</h2><p>{report.observation_counts.direct_seen_nearby} akun di sekitar melaporkan melihat langsung.</p><p>{report.observation_counts.direct_not_observed_nearby} akun di sekitar melaporkan tidak melihat tanda pada waktu pengamatan.</p>
+      {report.observation_counts.direct_not_observed_nearby>0&&<p className="font-semibold">Ada pengamatan yang bertentangan. Perlu ditinjau dalam konteks waktu dan lokasi.</p>}
+      <p>{report.observation_counts.secondhand} akun memberi informasi dari orang lain; {report.observation_counts.unsure} belum dapat memastikan.</p><p className="text-sm text-slate-700">Angka memakai pengamatan segar yang memenuhi kriteria. Akun bukan jaminan orang unik; jumlah tidak menentukan kebenaran. Pengamatan tanpa lokasi tetap dapat ditinjau pengelola.</p>
+    </section>
+    {report.status==="active"&&!own&&!error&&<><div className="flex flex-wrap gap-3"><button className="gema-button" onClick={()=>setObserve(!observe)}>Beri pengamatan</button><button className="gema-button-secondary" onClick={()=>setAbuse(!abuse)}>Laporkan masalah informasi</button></div>
+      {observe&&<ObservationForm key={id} reportId={id} onSaved={()=>void load()}/>}
+      {abuse&&<form className="gema-card space-y-3" onSubmit={e=>{e.preventDefault();void complain();}}><h2 className="font-bold">Pengaduan informasi</h2><label className="block">Masalah<select className="gema-input" value={category} onChange={e=>setCategory(e.target.value)}><option value="old_photo">Foto lama</option><option value="wrong_location">Lokasi tidak sesuai</option><option value="spam">Spam</option><option value="privacy">Privasi</option><option value="other">Lainnya</option></select></label><label className="block">Alasan<textarea className="gema-input" required maxLength={500} value={reason} onChange={e=>setReason(e.target.value)}/></label><button className="gema-button" disabled={busy}>Kirim pengaduan</button></form>}
+    </>}
+    </>}
+    {message&&<p role="status">{message}</p>}<Link className="gema-link" href="/track">Laporan saya</Link>
+  </main>;
 }

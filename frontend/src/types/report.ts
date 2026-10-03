@@ -1,7 +1,7 @@
 export type DisasterType = "flood" | "landslide" | "fire";
 // PRD v2.3 menambah kritis; backend/app/schemas/report.py perlu disinkronkan sebelum C1.
 export type Severity = "rendah" | "sedang" | "tinggi" | "kritis";
-export type ReportStatus = "draft" | "active" | "disputed_hidden";
+export type ReportStatus = "draft" | "active" | "disputed_hidden" | "held" | "closed";
 export type ResponderStatus = "PENDING" | "ACCEPTED";
 export type LocationSource = "device" | "map" | "demo";
 export type HelpVoteValue = "seen" | "not_seen";
@@ -27,12 +27,14 @@ export type ReportDetails =
 
 // Proyeksi publik — sesuai kontrak GET /api/reports di PRD §19 (tanpa photo_path/author_id/koordinat asli).
 export interface Report {
+  review_requested?: boolean;
+  awareness_radius_m?: number | null;
   id: string;
   status: ReportStatus;
   responder_status: ResponderStatus;
   type: DisasterType;
-  severity: Severity;
-  ai_summary: string;
+  severity: Severity | null;
+  ai_summary: string | null;
   description: string | null;
   details: ReportDetails | null;
   location_label: string;
@@ -46,9 +48,22 @@ export interface Report {
   seen_count: number;
   not_seen_count: number;
   false_vote_count: number;
+  verification_status: "unconfirmed" | "under_review" | "confirmed";
+  closure_reason: "resolved" | "expired" | "refuted" | null;
+  ai_status: "pending" | "relevant" | "uncertain" | "invalid" | "unavailable" | "not_requested";
+  reported_type: DisasterType | null;
+  ai_disaster_type: DisasterType | null;
+  observed_at: string | null;
+  observation_time_known: boolean;
+  photo_source: "camera" | "gallery" | "forwarded" | "none";
+  expires_at: string | null;
+  verified_at: string | null;
+  public_verification_note: string | null;
+  version: number;
+  observation_counts: { direct_seen_nearby: number; direct_not_observed_nearby: number; secondhand: number; unsure: number };
 }
 
-// Kontrak POST /api/analyze (plan.md "Kontrak API").
+// Kontrak POST /api/analyze.
 export type AnalyzeResponse =
   | {
       validity: "relevant";
@@ -58,4 +73,21 @@ export type AnalyzeResponse =
       summary: string;
       reason: string;
     }
-  | { validity: "invalid" | "uncertain"; reason: string };
+  | { validity: "invalid" | "uncertain"; reason: string; draft_id?: string; ai_status?: string };
+
+export interface DraftAnalysis {
+  draft_id: string;
+  ai_status: Report["ai_status"];
+  type?: DisasterType | null;
+  severity?: Severity | null;
+  summary?: string | null;
+  reason?: string;
+}
+
+export interface NearbyResult {
+  data_as_of: string;
+  location_mode: "device" | "area";
+  location_valid: boolean;
+  items: { report_id: string; reported_type: DisasterType; location_label: string; distance_m: number; observed_at: string;
+    verification_status: Report["verification_status"]; notice_kind: "awareness" | "observation_invitation"; report: Report }[];
+}

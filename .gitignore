@@ -27,7 +27,7 @@ backend/.pytest_cache
 backend/.mypy_cache
 
 # --- lokal per-mesin (jangan dishare ke tim) ---
-.claude/settings.local.json
+.claude/
 
 # --- misc ---
 .DS_Store
@@ -45,3 +45,8 @@ backend/test/
 .env.local
 *.env
 !*.env.example
+
+# Local test databases and screenshots; never application data.
+/tmp/
+/frontend/test-results/
+/frontend/playwright-report/

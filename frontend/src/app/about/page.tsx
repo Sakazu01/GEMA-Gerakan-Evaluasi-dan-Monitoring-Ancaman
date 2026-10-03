@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/Card";
 
 const whyGema = [
   { icon: Users, title: "Dari masyarakat, untuk masyarakat", desc: "GEMA memudahkan siapa saja untuk melaporkan situasi di sekitar mereka." },
-  { icon: MapPin, title: "Informasi berbasis lokasi", desc: "Laporan ditampilkan pada peta secara real-time untuk memberikan gambaran kondisi di lapangan." },
+  { icon: MapPin, title: "Informasi berbasis lokasi", desc: "Peta dan daftar diperbarui berkala saat aplikasi aktif, dengan waktu pengamatan dan status bukti." },
   { icon: ShieldCheck, title: "Didukung analisis AI", desc: "AI membantu mengidentifikasi jenis bencana, tingkat keparahan, dan ringkasan laporan." },
 ];
 
@@ -24,18 +24,18 @@ const features = [
 ];
 
 const stats = [
-  { value: "1.200+", label: "Laporan masyarakat" },
-  { value: "120+", label: "Lokasi terdampak" },
-  { value: "15+", label: "Instansi terhubung" },
+  { value: "Warga", label: "Melaporkan dan memberi pengamatan" },
+  { value: "Pengelola", label: "Meninjau bukti dan mencatat keputusan" },
+  { value: "Responder", label: "Mencatat penerimaan laporan" },
 ];
 
 const faqs = [
   { q: "Apa itu GEMA?", a: "GEMA (Gerakan Evaluasi dan Monitoring Ancaman) adalah platform untuk melaporkan dan melihat informasi ancaman bencana berdasarkan lokasi, yang dapat diakses oleh masyarakat secara terbuka." },
-  { q: "Apakah semua laporan di GEMA sudah diverifikasi?", a: "Laporan tayang otomatis setelah dikirim. Jika 3 pengguna berbeda menyanggah laporan yang sama, laporan itu disembunyikan sementara dari peta publik sampai ditinjau ulang." },
-  { q: "Bagaimana cara melaporkan bencana?", a: "Buka “Laporkan Bencana”, sertakan foto kejadian dan lokasi Anda, lalu kirim. AI akan membantu mengisi jenis bencana dan tingkat keparahan sebagai draf yang bisa Anda periksa sebelum diterbitkan." },
-  { q: "Apa arti warna pada peta?", a: "Hijau (terkendali), kuning (waspada, radius ±1 km), merah (bahaya, radius 3–5 km), dan hitam (kritis, radius >10 km) — menunjukkan tingkat keparahan laporan yang aktif." },
-  { q: "Bagaimana AI GEMA menganalisis laporan?", a: "AI membaca foto dan deskripsi yang Anda kirim untuk menyusun ringkasan, alasan, jenis bencana, dan perkiraan tingkat keparahan secara otomatis." },
-  { q: "Apakah hasil AI selalu benar?", a: "Tidak selalu. Hasil AI adalah bantuan awal, bukan keputusan final — karena itu laporan tetap bisa disanggah warga lain jika dirasa tidak akurat." },
+  { q: "Apakah semua laporan di GEMA sudah diverifikasi?", a: "Tidak. Laporan memiliki status belum dikonfirmasi, sedang ditinjau, atau dikonfirmasi pengelola komunitas. Jumlah pengamatan/pengaduan tidak otomatis menentukan kebenaran atau menghapus laporan." },
+  { q: "Bagaimana cara melaporkan bencana?", a: "Buka Buat Laporan, isi waktu pengamatan, sumber informasi, jenis, dan lokasi kejadian. Foto opsional; laporan manual atau meragukan ditinjau dahulu." },
+  { q: "Apa arti warna pada peta?", a: "Marker netral menunjukkan laporan belum terkonfirmasi. Warna severity adalah indikasi visual AI, bukan jaminan kondisi aman. Lingkaran hanya jangkauan informasi dari laporan terkonfirmasi, bukan batas bahaya." },
+  { q: "Bagaimana AI GEMA menganalisis laporan?", a: "AI membaca foto untuk mengenali indikasi visual jenis bencana dan keparahan. AI tidak membuktikan waktu, lokasi, atau keaslian berita; deskripsi disimpan sebagai keterangan pelapor." },
+  { q: "Bagaimana warga membantu peninjauan?", a: "Pilih melihat tanda kejadian, berada di lokasi tetapi tidak melihat tanda, atau belum tahu. Sebut sumber langsung atau informasi dari orang lain. Tidak perlu mendekati lokasi berbahaya." },
   { q: "Bagaimana cara melacak respons?", a: "Buka menu “Lacak Respons” untuk melihat status laporan yang pernah Anda kirim, termasuk apakah sudah diterima oleh petugas terkait." },
   { q: "Apa yang harus dilakukan ketika terjadi bencana?", a: "Lihat “Panduan Evakuasi” untuk langkah keselamatan sesuai jenis bencana, atau hubungi nomor darurat di halaman Hotline jika situasinya mendesak." },
 ];
@@ -105,7 +105,7 @@ export default function AboutPage() {
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-[11px] text-slate-500">*Data simulasi untuk keperluan demonstrasi.</p>
+            <p className="mt-3 text-sm text-slate-700">GEMA mendukung kesiapsiagaan komunitas. Dampak lapangan dan kemitraan resmi masih perlu diuji.</p>
           </Card>
         </section>
 

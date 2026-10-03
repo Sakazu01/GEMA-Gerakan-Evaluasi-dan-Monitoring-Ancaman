@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useRef } from "react";
+import { useDialog } from "@/components/ui/use-dialog";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,19 +13,14 @@ const items: { href: string; label: string; description?: string; icon: LucideIc
   { href: "/track", label: "Lacak Respons", icon: TrendingUp },
   { href: "/hotline", label: "Hotline Darurat", icon: Phone },
   { href: "/about", label: "Tentang GEMA", description: "Mengenal lebih dekat GEMA", icon: Info },
+  { href: "/pengelola", label: "Masuk pengelola", icon: Info },
 ];
 
 export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (!open) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const ref = useRef<HTMLElement>(null);
+  useDialog(open, ref, onClose);
 
   return (
     <>
@@ -37,6 +33,11 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
         />
       )}
       <nav
+        ref={ref}
+        role="dialog"
+        aria-modal={open || undefined}
+        inert={!open}
+        tabIndex={-1}
         aria-label="Menu utama"
         aria-hidden={!open}
         className={`fixed inset-y-0 right-0 z-50 flex w-72 flex-col bg-[#F7F6E4] p-5 shadow-xl transition-transform duration-200 ${

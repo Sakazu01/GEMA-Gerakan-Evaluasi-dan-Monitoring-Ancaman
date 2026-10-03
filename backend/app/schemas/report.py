@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DisasterType(str, Enum):
@@ -12,10 +12,7 @@ class DisasterType(str, Enum):
 
 
 class Severity(str, Enum):
-    """4 tingkat keparahan, tiap tingkat punya radius peringatan sendiri (PRD §9.2):
-    rendah tidak pernah memicu peringatan; sedang/tinggi/kritis makin luas radiusnya.
-    `kritis` = bahaya skala luas/regional (bukan cuma satu titik parah), beda dari
-    `tinggi` yang tetap SEGERA tapi cakupannya lebih lokal — lihat app/services/model.py."""
+    """Indikasi visual AI, bukan tingkat risiko yang telah diverifikasi."""
 
     rendah = "rendah"
     sedang = "sedang"
@@ -27,6 +24,8 @@ class ReportStatus(str, Enum):
     draft = "draft"
     active = "active"
     disputed_hidden = "disputed_hidden"
+    held = "held"
+    closed = "closed"
 
 
 class ResponderStatus(str, Enum):
@@ -47,15 +46,15 @@ class HelpStatus(str, Enum):
 
 
 class ReportOut(BaseModel):
-    """Proyeksi publik laporan. Bentuk JSON-nya dikunci di plan.md ("Kontrak API") dan
-    kembar dengan frontend/src/types/report.ts — jangan ubah tanpa koordinasi tim."""
+    """Proyeksi publik laporan. Bentuknya kembar dengan frontend/src/types/report.ts —
+    jangan ubah salah satu tanpa koordinasi tim."""
 
     id: str
     status: ReportStatus
     responder_status: ResponderStatus
     type: DisasterType
-    severity: Severity
-    ai_summary: str
+    severity: Severity | None
+    ai_summary: str | None
     description: str | None = None
     details: dict[str, Any] | None = None
     location_label: str
@@ -69,3 +68,18 @@ class ReportOut(BaseModel):
     seen_count: int
     not_seen_count: int
     false_vote_count: int
+    verification_status: str = "unconfirmed"
+    closure_reason: str | None = None
+    ai_status: str = "not_requested"
+    reported_type: DisasterType | None = None
+    ai_disaster_type: DisasterType | None = None
+    observed_at: datetime | None = None
+    observation_time_known: bool = False
+    photo_source: str = "none"
+    expires_at: datetime | None = None
+    verified_at: datetime | None = None
+    public_verification_note: str | None = None
+    version: int = 1
+    observation_counts: dict[str, int] = Field(default_factory=dict)
+    awareness_radius_m: int | None = None
+    review_requested: bool = False

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Header, HTTPException
 
 from app.core.config import settings
 from app.services import telegram as telegram_service
+from app.services.supabase_client import get_client
 
 router = APIRouter(tags=["telegram"])
 logger = logging.getLogger(__name__)
@@ -48,11 +49,20 @@ def telegram_webhook(
         user = callback.get("from")
         if not isinstance(user, dict) or not isinstance(user.get("id"), int):
             return {"ok": True}
-        name = user.get("username") or user.get("first_name") or "Petugas"
-        responder = f"{name} (ID {user['id']})"
-        row, changed = telegram_service.accept_report(
-            report_id, settings.tele_chat_id, message_id, responder
-        )
+        configured = {v.strip() for v in settings.telegram_responder_ids.split(",") if v.strip()}
+        if configured and str(user["id"]) not in configured:
+            answer = "Akun tidak memiliki izin responder"
+            return {"ok": True}
+        identities = get_client().table("telegram_responders").select("user_id,label").eq("telegram_user_id", user["id"]).limit(1).execute().data
+        if not identities:
+            answer = "Akun tidak terdaftar sebagai responder"
+            return {"ok": True}
+        identity = identities[0]
+        result = get_client().rpc("accept_responder_report", {
+            "p_report": report_id, "p_chat": settings.tele_chat_id, "p_message": message_id,
+            "p_actor": identity["user_id"], "p_label": identity["label"],
+        }).execute().data
+        row, changed = result["report"], result["changed"]
         if row is None:
             answer = "Laporan tidak tersedia untuk diterima"
             return {"ok": True}

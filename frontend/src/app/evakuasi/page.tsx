@@ -25,7 +25,7 @@ export default function EvakuasiPage() {
     .filter((report) => report.type === selected && report.status === "active")
     .filter((report, index, all) => all.findIndex((r) => r.location_label === report.location_label) === index);
   const selectedReport = candidates.find((report) => report.id === selectedReportId) ?? candidates[0] ?? null;
-  const nearest = selectedReport ? nearestTitikKumpul(selectedReport.public_lat, selectedReport.public_lng) : null;
+  const nearest = process.env.NEXT_PUBLIC_DEMO_MODE === "true" && selectedReport ? nearestTitikKumpul(selectedReport.public_lat, selectedReport.public_lng) : null;
 
   return (
     <div className="min-h-dvh">
