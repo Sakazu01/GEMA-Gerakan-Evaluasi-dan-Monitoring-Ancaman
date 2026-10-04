@@ -58,6 +58,16 @@ class PublishReportRequest(BaseModel):
         return self
 
 
+class EditReportRequest(BaseModel):
+    """Perubahan oleh pelapor selama laporan belum diterima responder."""
+
+    model_config = {"extra": "forbid"}
+
+    description: str | None = Field(default=None, max_length=500)
+    location_label: str | None = Field(default=None, min_length=1, max_length=100)
+    reported_type: Literal["flood", "landslide", "fire"] | None = None
+
+
 class NearbyRequest(BaseModel):
     model_config = {"extra": "forbid"}
 

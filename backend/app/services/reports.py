@@ -267,6 +267,34 @@ def publish_draft(author_id: str, req: PublishReportRequest, key: str | None = N
     return result["report"], result["already_published"]
 
 
+def _own_pending_query(report_id: str, author_id: str, query):
+    # Satu query atomik: hanya milik pelapor, bukan demo, dan belum diterima responder.
+    return query.eq("id",report_id).eq("author_id",author_id).eq("responder_status","PENDING").eq("is_demo",False).in_("status",["active","held"])
+
+
+def edit_own(report_id: str, author_id: str, changes: dict[str, Any]) -> dict[str, Any] | None:
+    patch = {k:v for k,v in changes.items() if v is not None or k=="description"}
+    if "reported_type" in patch:
+        patch["type"] = patch["reported_type"]
+        patch["details_json"] = None  # detail lama milik jenis sebelumnya
+    if not patch:
+        return get_row(report_id,author_id)
+    rows = _own_pending_query(report_id,author_id,get_client().table("reports").update(patch)).execute().data
+    return get_row(report_id,author_id) if rows else None  # ulang baca agar relasi (votes, dll.) ikut
+
+
+def delete_own(report_id: str, author_id: str) -> bool:
+    client = get_client()
+    row = get_row(report_id,author_id)
+    rows = _own_pending_query(report_id,author_id,client.table("reports").delete()).execute().data
+    if rows and row and row.get("photo_path"):
+        try:
+            client.storage.from_(PHOTO_BUCKET).remove([row["photo_path"]])
+        except Exception:
+            pass  # file yatim dibersihkan job retensi; baris laporan sudah hilang
+    return bool(rows)
+
+
 def active_high_risk_candidates() -> list[dict[str, Any]]:
     return notice_candidate_rows()
 
