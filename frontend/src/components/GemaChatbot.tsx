@@ -21,7 +21,7 @@ export function GemaChatbot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([{
     role: "assistant",
-    content: "Halo! Saya GEMA AI. Tanyakan jumlah atau ringkasan laporan warga, pengetahuan umum banjir, longsor, dan kebakaran, atau cara kerja GEMA. Saya tidak dapat memastikan kondisi di lapangan.",
+    content: "Halo! Saya GEMA AI. Tanyakan jumlah atau ringkasan laporan warga, pengetahuan umum banjir, longsor, dan kebakaran, atau cara kerja GEMA.",
   }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
