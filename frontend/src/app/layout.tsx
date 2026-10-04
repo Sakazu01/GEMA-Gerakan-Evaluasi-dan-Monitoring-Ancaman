@@ -3,6 +3,7 @@ import "@fontsource-variable/plus-jakarta-sans/index.css";
 import "./globals.css";
 import { RoleProvider } from "@/lib/role-context";
 import { DemoReportProvider } from "@/lib/demo-report-context";
+import { NearbyAlert } from "@/components/NearbyAlert";
 import { GemaChatbot } from "@/components/GemaChatbot";
 
 // Plus Jakarta Sans -- dibuat kolektif Indonesia untuk program Jakarta Smart City,
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <RoleProvider>
           <DemoReportProvider>{children}</DemoReportProvider>
+          <NearbyAlert />
           <GemaChatbot />
         </RoleProvider>
       </body>
