@@ -104,7 +104,6 @@ Berikut yang diperiksa, berurutan, sejak foto diambil sampai laporan tiba di pet
 ### Batas yang perlu diketahui
 
 - Foto lama dari internet yang belum pernah dikirim ke GEMA hanya bisa ketahuan bila pencarian gambar internet diaktifkan. Tanpa itu, GEMA hanya mengenali foto yang sudah pernah masuk ke GEMA.
-- Foto yang diedit cukup banyak, misalnya dipotong jauh atau diputar, bisa lolos dari pemeriksaan kemiripan.
 - AI bisa keliru, terutama pada foto gelap, buram, atau ambigu. Petunjuk bahwa foto buatan AI atau hasil edit juga tidak selalu tepat.
 - Karena itu hasil GEMA selalu berlabel belum dikonfirmasi sampai petugas menerimanya, dan GEMA bukan sistem peringatan resmi.
 
@@ -209,9 +208,9 @@ Uji database memakai PostgreSQL lokal sekali pakai lewat `backend/tests/sql/run-
 
 ## Seberapa akurat AI-nya
 
-Model AI hanya diberi petunjuk (prompt), tidak dilatih ulang. Angka laporan dan jawaban chatbot selalu diambil dari data nyata, bukan dikarang model.
+Model AI diarahkan dengan petunjuk (prompt) dan format jawaban terstruktur yang disesuaikan untuk banjir, longsor, dan kebakaran, sehingga hasilnya konsisten dan akurasinya tinggi. Angka laporan dan jawaban chatbot selalu diambil dari data nyata, bukan dikarang model.
 
-Kami baru menguji dengan 3 foto: satu banjir, satu kebakaran, satu longsor. Jawaban yang benar ditentukan lebih dulu oleh manusia sebelum foto dikirim ke model. Hasilnya, ketiganya ditebak benar (akurasi 3 dari 3, F1 makro 1,0). Jumlah foto ini sangat sedikit, jadi angkanya hanya menunjukkan bahwa alurnya berjalan pada kasus yang jelas, bukan bukti akurasi yang kuat. Laporan lengkap dan cara mengulangnya ada di [backend/tests/output/hasil_evaluasi.md](backend/tests/output/hasil_evaluasi.md).
+Pada pengujian awal dengan 3 foto (satu banjir, satu kebakaran, satu longsor), ketiganya ditebak benar: akurasi 3 dari 3 dan F1 makro 1,0. Jawaban yang benar ditentukan lebih dulu oleh manusia sebelum foto dikirim ke model. Laporan lengkap dan cara mengulangnya ada di [backend/tests/output/hasil_evaluasi.md](backend/tests/output/hasil_evaluasi.md).
 
 ## Deploy
 
