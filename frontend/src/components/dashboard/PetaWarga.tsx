@@ -93,7 +93,7 @@ export function PetaWarga({location,locationMessage,onLocationChange}:{location:
         {locationMessage&&<p role="status" className={pill}>{locationMessage}</p>}
         {loading&&<p role="status" className={pill}>Memuat laporan…</p>}
         {error&&<div role="alert" className={`${pill} border border-amber-700 bg-amber-50`}><p>Data belum dapat dimuat. {error}</p><button type="button" onClick={()=>void refresh()} className="gema-button mt-2">Coba lagi</button></div>}
-        {!loading&&!error&&reports.length===0&&<p role="status" className={pill}>Belum ada laporan yang diterima petugas di area ini. Ini bukan jaminan kondisi aman.</p>}
+        {!loading&&!error&&reports.length===0&&<p role="status" className={pill}>Belum ada laporan aktif di area ini. Ini bukan jaminan kondisi aman.</p>}
         {mapMode==="density"&&densityOpen&&<div className={`${pill} flex w-fit max-w-full items-center gap-3 py-1 pr-1`}>
           <div>
             <p className="font-semibold">Pelapor dalam radius 50 m</p>
@@ -128,7 +128,7 @@ export function PetaWarga({location,locationMessage,onLocationChange}:{location:
       className={`fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-[#F7F6E4] shadow-xl transition-transform duration-200 ${sheet?"translate-y-0":"translate-y-full"}`}>
       <div className="sticky top-0 flex justify-end bg-[#F7F6E4] p-2"><button type="button" onClick={()=>setSheet(false)} aria-label="Tutup" className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-700 hover:bg-black/5"><X aria-hidden="true" size={22}/></button></div>
       <div className="space-y-5 px-4 pb-8">
-        <div><h2 className="text-2xl font-bold text-slate-950">Kejadian di sekitar Anda</h2><p className="mt-1 text-slate-700">Peta menampilkan laporan yang telah diterima petugas. Informasi belum diverifikasi dan bukan peringatan resmi.</p></div>
+        <div><h2 className="text-2xl font-bold text-slate-950">Kejadian di sekitar Anda</h2><p className="mt-1 text-slate-700">Peta menampilkan laporan aktif; yang belum diterima petugas berlabel Belum dikonfirmasi. Informasi belum diverifikasi dan bukan peringatan resmi.</p></div>
         {sheet&&<NearbyNotice location={location}/>}
         <section aria-label="Legenda tingkat keparahan" className="gema-card">
           <h3 className="gema-card-title mb-3">Indikasi visual AI</h3>

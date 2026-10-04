@@ -65,7 +65,7 @@ flowchart LR
   I -.-> F
 ```
 
-Laporan baru tidak langsung tampil di peta umum. Peta menampilkan laporan setelah petugas menerimanya. Sebelum itu, hanya warga di sekitar lokasi (radius 500 meter) yang diajak membantu memeriksa.
+Laporan aktif langsung tampil di peta umum dengan label Belum dikonfirmasi sampai petugas menerimanya. Warga di sekitar lokasi (radius 500 meter) langsung diajak membantu memeriksa.
 
 ## Bagaimana GEMA menilai sebuah laporan
 

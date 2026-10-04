@@ -67,7 +67,7 @@ class CommunityTests(unittest.TestCase):
 
     def test_freshness_and_demo_filter_shared_policy(self):
         self.assertTrue(trust.active_public(row(),NOW))
-        self.assertFalse(trust.visible_on_public_map(row(responder_status="PENDING"),NOW))
+        self.assertTrue(trust.visible_on_public_map(row(responder_status="PENDING"),NOW))
         self.assertTrue(trust.visible_on_public_map(row(responder_status="ACCEPTED"),NOW))
         for changes in ({"is_demo":True},{"status":"held"},{"expires_at":NOW.isoformat()},{"expires_at":None}):
             self.assertFalse(trust.active_public(row(**changes),NOW))

@@ -23,8 +23,8 @@ def active_public(row: dict[str, Any], now: datetime) -> bool:
 
 
 def visible_on_public_map(row: dict[str, Any], now: datetime) -> bool:
-    """Only responder-accepted reports become public map markers."""
-    return active_public(row, now) and row.get("responder_status") == "ACCEPTED"
+    """Active reports become public map markers; responder acceptance only raises their status."""
+    return active_public(row, now)
 
 
 def observation_counts(row: dict[str, Any], now: datetime) -> dict[str, int]:

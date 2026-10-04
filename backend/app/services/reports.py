@@ -61,10 +61,11 @@ def _to_public(row: dict[str, Any]) -> ReportOut:
 
 def public_active_query(columns: str = _SELECT):
     query = get_client().table("reports").select(columns).eq("status", "active").gt("expires_at", utcnow().isoformat())
+    # Laporan aktif langsung tampil dengan label belum dikonfirmasi; penerimaan responder hanya menaikkan statusnya.
     if settings.demo_showcase:
         # Data simulasi berlabel "DEMO" ikut tampil hanya bila showcase dinyalakan eksplisit.
-        return query.or_("and(is_demo.eq.false,responder_status.eq.ACCEPTED),is_demo.eq.true")
-    return query.eq("responder_status", "ACCEPTED").eq("is_demo", False)
+        return query
+    return query.eq("is_demo", False)
 
 
 def list_active(limit: int, cursor: str | None = None, cursor_id: str | None = None) -> list[ReportOut]:
