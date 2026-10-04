@@ -1,6 +1,6 @@
 """Fixture privat pada database demo terpisah, bukan laporan untuk feed publik.
 
-Jalankan dari folder backend dengan DEMO_MODE=true: python -m scripts.seed_demo [--showcase].
+Jalankan dari folder backend dengan DEMO_MODE=true: python -m scripts.seed_demo [--showcase [--count N]].
 Tidak membuat sesi Auth, mengirim notifikasi, atau menjalankan analisis AI.
 """
 
@@ -328,7 +328,7 @@ _SEBARAN = [
 ]
 
 
-def build_showcase_rows(now: datetime | None = None, seed: int = 2026) -> list[dict]:
+def build_showcase_rows(now: datetime | None = None, seed: int = 2026, count: int | None = None) -> list[dict]:
     """Titik simulasi untuk demo peta: aktif, diterima, tanpa hasil AI atau foto palsu.
 
     Semua baris berlabel DEMO dan is_demo=true; hanya tampil bila DEMO_SHOWCASE=true.
@@ -337,7 +337,9 @@ def build_showcase_rows(now: datetime | None = None, seed: int = 2026) -> list[d
     rng = random.Random(seed)
     max_hours = min(9.0, settings.report_active_ttl_hours - 1)
     rows = []
+    by_region: list[list[dict]] = []
     for name, lat, lng, dominant, scatter, hot in _SEBARAN:
+        start = len(rows)
         points = [(lat + rng.uniform(-0.0002, 0.0002), lng + rng.uniform(-0.0002, 0.0002), dominant) for _ in range(hot)]
         for _ in range(scatter):
             angle, radius = rng.uniform(0, 2 * math.pi), rng.uniform(0.004, 0.02)
@@ -362,7 +364,16 @@ def build_showcase_rows(now: datetime | None = None, seed: int = 2026) -> list[d
                 "author_id": _fake_author(1000 + index), "is_demo": True,
                 "responder_status": "ACCEPTED", "accepted_at": published.isoformat(), "accepted_by": "Simulasi demo",
             })
-    return rows
+        by_region.append(rows[start:])
+    if count is None or count >= len(rows):
+        return rows
+    # Dibatasi `count` titik, diambil bergiliran per wilayah supaya tetap tersebar di seluruh Indonesia.
+    picked: list[dict] = []
+    for round_index in range(max(len(group) for group in by_region)):
+        for group in by_region:
+            if round_index < len(group) and len(picked) < count:
+                picked.append(group[round_index])
+    return picked
 
 
 def main() -> None:
@@ -370,10 +381,13 @@ def main() -> None:
         raise SystemExit("Seed ditolak: gunakan database demo terpisah dengan DEMO_MODE=true.")
     client = get_client()
 
-    client.table("reports").delete().eq("is_demo", True).execute()
+    count = int(sys.argv[sys.argv.index("--count") + 1]) if "--count" in sys.argv else None
+    old = client.table("reports").delete().eq("is_demo", True)
+    # Mode showcase hanya mengganti titik simulasinya; laporan demo lain tidak disentuh.
+    (old.eq("accepted_by", "Simulasi demo") if "--showcase" in sys.argv else old).execute()
     print("laporan DEMO lama dihapus")
 
-    showcase = build_showcase_rows() if "--showcase" in sys.argv else []
+    showcase = build_showcase_rows(count=count) if "--showcase" in sys.argv else []
     rows = [] if showcase else build_demo_rows()
     # Dua kelompok punya kolom berbeda; PostgREST mengisi kolom yang absen dengan null, jadi tidak dicampur.
     for group in (rows, showcase):
