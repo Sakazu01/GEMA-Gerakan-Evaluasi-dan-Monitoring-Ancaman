@@ -12,7 +12,7 @@ from app.services.clock import utcnow
 from app.services.model import AnalyzeResult
 from app.services.rules import haversine_distance_m, help_status_from_counts
 from app.services.supabase_client import get_client
-from app.services.trust import active_public, observation_counts, notice_radius, moment
+from app.services.trust import active_public, visible_on_public_map, observation_counts, notice_radius, moment
 
 _SELECT = "*, false_votes(voter_id), help_votes(value), observations(*), abuse_reports(created_at)"
 _PUBLIC_COORD_DECIMALS = 3
@@ -34,6 +34,7 @@ def _to_public(row: dict[str, Any]) -> ReportOut:
         id=row["id"], status=status, responder_status=row.get("responder_status", "PENDING"),
         type=row.get("reported_type") or row["type"], severity=row.get("severity"),
         ai_summary=row.get("ai_summary") if row.get("ai_status", "relevant") == "relevant" else None,
+        ai_confidence=row.get("ai_confidence"), ai_limitations=row.get("ai_limitations"),
         description=row.get("description") if confirmed else None,
         details=row.get("details_json") if confirmed else None,
         location_label=row.get("location_label") or "Area belum dipilih",
@@ -52,11 +53,15 @@ def _to_public(row: dict[str, Any]) -> ReportOut:
         version=row.get("version", 1), observation_counts=observation_counts(row, now),
         awareness_radius_m=notice_radius(row) if active_public(row,now) else None,
         review_requested=status!="closed" and (row["status"]=="held" or row.get("verification_status")=="under_review" or bool(new_abuse or conflict)),
+        provenance_status=row.get("provenance_status", "not_requested"),
+        internal_match_count=row.get("internal_match_count",0),
+        web_match_count=row.get("web_match_count",0),
     )
 
 
 def public_active_query(columns: str = _SELECT):
-    return get_client().table("reports").select(columns).eq("status", "active").eq("is_demo", False).gt("expires_at", utcnow().isoformat())
+    return (get_client().table("reports").select(columns).eq("status", "active")
+        .eq("responder_status", "ACCEPTED").eq("is_demo", False).gt("expires_at", utcnow().isoformat()))
 
 
 def list_active(limit: int, cursor: str | None = None, cursor_id: str | None = None) -> list[ReportOut]:
@@ -84,6 +89,20 @@ def active_rows(columns: str = _SELECT) -> list[dict[str, Any]]:
     start = 0
     while True:
         page = public_active_query(columns).order("id").range(start,start+499).execute().data
+        rows.extend(page)
+        if len(page) < 500:
+            return rows
+        start += 500
+
+
+def notice_candidate_rows(columns: str = _SELECT) -> list[dict[str, Any]]:
+    """Active reports can invite nearby verification before responder acceptance."""
+    rows: list[dict[str, Any]] = []
+    start = 0
+    while True:
+        page = (get_client().table("reports").select(columns).eq("status", "active")
+            .eq("is_demo", False).gt("expires_at", utcnow().isoformat())
+            .order("id").range(start, start + 499).execute().data)
         rows.extend(page)
         if len(page) < 500:
             return rows
@@ -137,12 +156,31 @@ def private_detail(row: dict[str, Any], moderator: bool = False) -> dict[str, An
         "own_observation": None,
     }
     if moderator:
+        internal=[]
+        matches=get_client().table("report_matches").select("matched_report_id,match_method,score,hamming_distance,created_at").eq("report_id",row["id"]).order("score",desc=True).limit(settings.provenance_result_limit).execute().data
+        for match in matches:
+            compared=get_row(match["matched_report_id"])
+            if not compared:continue
+            compared_photo=None
+            if compared.get("photo_path"):
+                try:compared_photo=get_client().storage.from_(PHOTO_BUCKET).create_signed_url(compared["photo_path"],60).get("signedURL")
+                except Exception:pass
+            distance=None
+            if all(value is not None for value in (row.get("lat"),row.get("lng"),compared.get("lat"),compared.get("lng"))):
+                distance=round(haversine_distance_m(row["lat"],row["lng"],compared["lat"],compared["lng"]))
+            internal.append({**match,"type":compared.get("reported_type") or compared.get("type"),"status":compared.get("status"),
+                "responder_status":compared.get("responder_status"),"location_label":compared.get("location_label"),
+                "observed_at":compared.get("observed_at"),"published_at":compared.get("published_at"),
+                "photo_url":compared_photo,"distance_m":distance})
         result.update({
             "lat":row.get("lat"),"lng":row.get("lng"),"verification_note":row.get("verification_note"),
             "observations":[{k:v for k,v in o.items() if k not in ("lat","lng")} for o in row.get("observations") or []],
             "abuse_reports":get_client().table("abuse_reports").select("category,reason,created_at").eq("report_id",row["id"]).execute().data,
             "audit":get_client().table("moderation_events").select("*").eq("report_id",row["id"]).order("created_at").execute().data,
             "outbox":get_client().table("notification_outbox").select("id,state,channel,attempts,last_error_code,created_at").eq("report_id",row["id"]).execute().data,
+            "internal_matches":internal,
+            "web_matches":get_client().table("web_image_matches").select("provider,source_page_url,source_image_url,title,published_at,match_type,score,created_at").eq("report_id",row["id"]).order("score",desc=True).limit(settings.provenance_result_limit).execute().data,
+            "incident":get_client().table("report_incidents").select("incident_id,match_basis,created_at").eq("report_id",row["id"]).limit(1).execute().data,
         })
     return result
 
@@ -194,6 +232,8 @@ def save_analysis(report_id: str, author_id: str, result: AnalyzeResult | None) 
         "type":result.disaster_type if relevant else None,"severity":result.severity if relevant else None,
         "ai_summary":result.summary_id[:240] if relevant else None,
         "ai_reason":result.reason_id[:120] if result else None,"analysis_lease_until":None,
+        "ai_confidence":result.confidence if result else None,
+        "ai_limitations":result.limitations[:160] if result and result.limitations else None,
     }
     if result:
         patch["risk_flags"] = [f"ai_suspect_{flag}" for flag in result.authenticity_flags]
@@ -201,7 +241,9 @@ def save_analysis(report_id: str, author_id: str, result: AnalyzeResult | None) 
     if not rows:
         raise ValueError("report_not_draft")
     return {"draft_id":report_id,"ai_status":status,"validity":status if status in ("relevant","invalid","uncertain") else "uncertain",
-            "type":patch["ai_disaster_type"],"severity":patch["severity"],"summary":patch["ai_summary"],"reason":patch["ai_reason"] or "Analisis belum tersedia; draft tersimpan."}
+            "type":patch["ai_disaster_type"],"severity":patch["severity"],"summary":patch["ai_summary"],
+            "confidence":patch["ai_confidence"],"limitations":patch["ai_limitations"],
+            "reason":patch["ai_reason"] or "Analisis belum tersedia; draft tersimpan."}
 
 
 def publish_draft(author_id: str, req: PublishReportRequest, key: str | None = None) -> tuple[dict[str, Any], bool]:
@@ -212,13 +254,18 @@ def publish_draft(author_id: str, req: PublishReportRequest, key: str | None = N
     result = rpc("submit_report",{
         "p_user":author_id,"p_draft":str(req.draft_id),"p_payload":payload,
         "p_key":key or str(req.draft_id),"p_hash":digest,"p_ttl":settings.report_active_ttl_hours,
-        "p_triage":bool(settings.tele_api and settings.tele_chat_id),
+        "p_triage":bool(settings.tele_api and settings.tele_chat_id),"p_push":settings.push_enabled,
     })
+    try:
+        get_client().rpc("assign_incident",{"p_report":result["report"]["id"]}).execute()
+    except Exception:
+        # Grouping enriches context but must not turn a persisted emergency report into a failed submission.
+        pass
     return result["report"], result["already_published"]
 
 
 def active_high_risk_candidates() -> list[dict[str, Any]]:
-    return active_rows()
+    return notice_candidate_rows()
 
 
 class VoteError(Exception):

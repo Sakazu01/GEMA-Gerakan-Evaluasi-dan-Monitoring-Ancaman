@@ -32,6 +32,8 @@ class AnalyzeResult(BaseModel):
     severity: str | None = None
     summary_id: str | None = None
     reason_id: str
+    confidence: Literal["rendah", "sedang", "tinggi"] = "sedang"
+    limitations: str | None = None
     authenticity_flags: list[Literal["screenshot", "ai_generated", "edited_or_collage", "stock_or_news"]] = []
 
 
@@ -71,6 +73,8 @@ severity — ini yang paling penting, dipakai untuk menentukan radius peringatan
 
 summary_id: maksimal 240 karakter, hanya gejala yang terlihat.
 reason_id: maksimal 120 karakter, alasan singkat penilaianmu.
+confidence: "rendah", "sedang", atau "tinggi" berdasarkan kejelasan bukti visual.
+limitations: maksimal 160 karakter tentang keterbatasan foto, sudut, cahaya, atau skala.
 
 authenticity_flags: daftar petunjuk visual untuk ditinjau manusia, BUKAN vonis keaslian.
 Isi hanya bila cirinya benar-benar tampak, kosongkan bila tidak ada:

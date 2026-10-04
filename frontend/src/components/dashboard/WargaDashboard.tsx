@@ -18,7 +18,7 @@ import type {DensityPoint,MapMode} from "@/components/ReportMapCanvas";
 export function WargaDashboard({location,locationMessage,onLocationChange}:{location:MapLocation|null;locationMessage:string;onLocationChange:(next:MapLocation)=>void}) {
   const {reports,loading,error,updatedAt,hasMore,loadMore,refresh}=useDemoReports();
   const [drawer,setDrawer]=useState(false);
-  const [mode,setMode]=useState<"list"|"map">("list");
+  const [mode,setMode]=useState<"list"|"map">("map");
   const [pick,setPick]=useState(false);
   const [message,setMessage]=useState(locationMessage);
   const [filter,setFilter]=useState("all");
@@ -34,10 +34,10 @@ export function WargaDashboard({location,locationMessage,onLocationChange}:{loca
   return <div className="min-h-dvh bg-[var(--background)]">
     <AppHeader open={drawer} onMenuClick={()=>setDrawer(true)}/>
     <main className="mx-auto max-w-7xl space-y-6 p-4 pb-24 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Informasi untuk kesiapsiagaan komunitas</h1><p className="mt-2 gema-muted">Laporan warga, pengamatan sekitar, dan keputusan pengelola ditampilkan terpisah.</p></div><Link href="/report/new" className="gema-button">Buat laporan</Link></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Kejadian di sekitar Anda</h1><p className="mt-2 gema-muted">Peta menampilkan laporan yang telah diterima petugas. Notifikasi sekitar dapat meminta bantuan verifikasi lebih awal.</p></div><Link href="/report/new" className="gema-button">Laporkan Bencana</Link></div>
       <section aria-label="Area pemantauan" className="gema-card space-y-3">
         <h2 className="gema-card-title">Area dipantau: {location?.label||"belum dipilih"}</h2>
-        {location?.source==="device"&&<p className="gema-muted">Lokasi perangkat bersifat perkiraan. Perbarui saat berpindah atau setelah 10 menit.</p>}
+        {location?.source==="device"&&<p className="gema-muted">Lokasi perangkat bersifat perkiraan. Perbarui saat berpindah atau setelah 5 menit.</p>}
         {location&&location.source!=="device"&&<p className="gema-muted">Ini area pilihan, bukan pernyataan posisi fisik Anda.</p>}
         <div className="flex flex-wrap gap-3"><button className="gema-button-secondary" onClick={()=>requestDeviceLocation(onLocationChange,setMessage)}>Gunakan / perbarui lokasi saya</button><button className="gema-button-secondary" onClick={()=>setPick(!pick)}>Pilih area manual</button></div>
         {message&&<p role="status">{message}</p>}
@@ -58,7 +58,7 @@ export function WargaDashboard({location,locationMessage,onLocationChange}:{loca
       <section aria-label="Daftar laporan" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map(report=><ReportCard key={report.id} report={report}/>)}</section>
       {hasMore&&<button className="gema-button-secondary" disabled={loading} onClick={()=>void loadMore()}>Muat laporan berikutnya</button>}
       <PushPreferences location={location}/>
-      <nav aria-label="Bantuan dan pengelolaan" className="flex flex-wrap gap-4"><Link className="gema-link" href="/evakuasi">Panduan</Link><Link className="gema-link" href="/hotline">Kontak</Link><Link className="gema-link" href="/track">Laporan saya</Link><Link className="gema-link" href="/pengelola">Masuk pengelola</Link></nav>
+      <nav aria-label="Bantuan dan riwayat" className="flex flex-wrap gap-4"><Link className="gema-link" href="/evakuasi">Panduan</Link><Link className="gema-link" href="/hotline">Kontak</Link><Link className="gema-link" href="/track">Laporan saya</Link><Link className="gema-link" href="/pengelola">Riwayat pemerintah</Link></nav>
     </main>
     <NavDrawer open={drawer} onClose={()=>setDrawer(false)}/>
   </div>;

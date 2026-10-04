@@ -39,3 +39,16 @@ def require_moderator(request: Request, user_id: str = Depends(require_user)) ->
     if not rows:
         raise HTTPException(403, "Akses pengelola diperlukan")
     return user_id
+
+
+def require_staff(request: Request, user_id: str = Depends(require_user)) -> str:
+    """Permanent government/responder account for private read-only evidence."""
+    if getattr(request.state.auth_user, "is_anonymous", True):
+        raise HTTPException(403, "Gunakan akun petugas permanen")
+    try:
+        rows = get_client().table("user_roles").select("role").eq("user_id", user_id).in_("role", ["moderator", "responder"]).execute().data
+    except Exception:
+        raise HTTPException(503, "Hak akses belum dapat diperiksa") from None
+    if not rows:
+        raise HTTPException(403, "Akses petugas diperlukan")
+    return user_id

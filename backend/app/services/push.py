@@ -57,9 +57,13 @@ def deliver_push(job: dict):
                 state = client.table("push_deliveries").select("state").eq("subscription_id", sub["id"]).eq("report_id", report["id"]).eq("report_version", report["version"]).execute().data
                 ambiguous = ambiguous or bool(state and state[0]["state"] in ("unknown", "sending"))
                 continue
+            verification_label = {
+                "confirmed": "Dikonfirmasi petugas",
+                "under_review": "Sedang ditinjau",
+            }.get(report.get("verification_status"), "Belum dikonfirmasi")
             payload = {
                 "title": "Pembaruan laporan GEMA" if correction else "Ada laporan di area yang Anda pantau",
-                "body": "Status laporan berubah. Baca informasi terbaru." if correction else "Belum dikonfirmasi. Beri pengamatan jika mengetahui kondisi." if report["verification_status"] != "confirmed" else "Dikonfirmasi pengelola komunitas. Baca informasi terbaru.",
+                "body": "Status laporan berubah. Baca informasi terbaru." if correction else f"{verification_label}. Ada laporan dalam radius 500 meter. Buka detail lalu pilih Konfirmasi atau Palsu berdasarkan pemeriksaan langsung.",
                 "url": f"/report/{report['id']}", "tag": f"gema:{report['id']}",
             }
             state, error_code = "sent", None

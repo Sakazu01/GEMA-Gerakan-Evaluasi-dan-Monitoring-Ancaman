@@ -29,12 +29,17 @@ export type ReportDetails =
 export interface Report {
   review_requested?: boolean;
   awareness_radius_m?: number | null;
+  provenance_status?: "not_requested" | "checking" | "complete" | "unavailable";
+  internal_match_count?: number;
+  web_match_count?: number;
   id: string;
   status: ReportStatus;
   responder_status: ResponderStatus;
   type: DisasterType;
   severity: Severity | null;
   ai_summary: string | null;
+  ai_confidence?: "rendah" | "sedang" | "tinggi" | null;
+  ai_limitations?: string | null;
   description: string | null;
   details: ReportDetails | null;
   location_label: string;
@@ -81,6 +86,8 @@ export interface DraftAnalysis {
   type?: DisasterType | null;
   severity?: Severity | null;
   summary?: string | null;
+  confidence?: "rendah" | "sedang" | "tinggi" | null;
+  limitations?: string | null;
   reason?: string;
 }
 

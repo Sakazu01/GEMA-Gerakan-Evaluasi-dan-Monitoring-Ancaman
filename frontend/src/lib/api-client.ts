@@ -32,6 +32,9 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       invalid_action:"Tindakan belum tersedia. Pilih tindakan yang sesuai status laporan.",
       subscription_conflict:"Notifikasi browser ini masih terhubung dengan sesi lain. Gunakan sesi sebelumnya atau buat langganan browser baru.",
       outbox_conflict:"Status pengiriman berubah atau percobaan ulang tidak tersedia. Muat ulang sebelum mencoba lagi.",
+      camera_photo_required:"Ambil foto langsung dari kamera sebelum mengirim laporan.",
+      proximity_required:"Lokasi perangkat harus berada maksimal 500 meter dari laporan dan diperbarui dalam 5 menit.",
+      invalid_observation:"Pilih Konfirmasi atau Palsu.",
       already_voted:"Jawaban ini sudah tercatat. Muat ulang untuk melihat hasilnya.",
     };
     throw new ApiError(messages[body?.code] || (typeof body?.detail === "string" ? body.detail : `Layanan sedang bermasalah (${res.status}).`), res.status, body?.code, Number(res.headers.get("Retry-After")) || undefined);

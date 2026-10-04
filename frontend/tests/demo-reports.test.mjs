@@ -6,7 +6,7 @@ const now=Date.UTC(2026,9,3,12);
 const report={id:"test",status:"active",severity:"tinggi",is_demo:false,verification_status:"confirmed",expires_at:new Date(now+60000).toISOString()};
 
 test("radius informasi sesuai kontrak baru dan override pengelola",()=>{
-  assert.deepEqual(Object.fromEntries(Object.entries(severityMap).map(([key,value])=>[key,value.warningRadiusM])),{rendah:500,sedang:1000,tinggi:3000,kritis:10000});
+  assert.deepEqual(Object.fromEntries(Object.entries(severityMap).map(([key,value])=>[key,value.warningRadiusM])),{rendah:500,sedang:500,tinggi:500,kritis:500});
   assert.equal(awarenessRadius({...report,awareness_radius_m:750}),750);
   assert.equal(isWarningZoneReport({...report,severity:null,awareness_radius_m:750},now),true);
 });

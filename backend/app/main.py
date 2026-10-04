@@ -72,6 +72,7 @@ async def policy_error(request: Request,error: VoteError):
         "fresh_observation_required":422,"future_observation":422,"invalid_transition":409,
         "observation_time_required":422,"invalid_action":422,"reason_required":422,"draft_expired":409,
         "subscription_conflict":409,"outbox_conflict":409}
+    codes.update({"camera_photo_required":422,"proximity_required":422,"invalid_observation":422})
     status=codes.get(error.code,503)
     message=error.code if status!=503 else "Layanan data belum tersedia. Coba lagi."
     return JSONResponse({"detail":message,"code":error.code if status!=503 else "data_unavailable",

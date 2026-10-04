@@ -4,7 +4,7 @@ import {apiFetch,ApiError} from "@/lib/api-client";
 import {reportsChanged} from "@/lib/demo-report-context";
 
 export interface LocalDraft {
-  id:string;photo:File|null;photoSource:"camera"|"gallery"|"forwarded"|"none";type:DisasterType;
+  id:string;photo:File|null;photoSource:"camera"|"none";photoCapturedAt?:string;type:DisasterType;
   observedAt:string|null;timeKnown:boolean;location:MapLocation|null;locationLabel:string;
   description:string;details:ReportDetails|null;createdAt:string;updatedAt:string;queued:boolean;
   serverId?:string;analysis?:DraftAnalysis;lastError?:string;
@@ -33,10 +33,12 @@ export async function listLocalDrafts():Promise<LocalDraft[]>{
   for(const draft of expired)await deleteLocalDraft(draft.id);
   return all.filter(d=>new Date(d.updatedAt).getTime()>=cutoff);
 }
-export async function submitLocalDraft(draft:LocalDraft,allowRenewal=true):Promise<{id:string;status:string}>{
+export async function submitLocalDraft(draft:LocalDraft,allowRenewal=true,onProgress?:(message:string)=>void):Promise<{id:string;status:string}>{
   if(!draft.location||!draft.locationLabel.trim())throw new Error("Lengkapi lokasi kejadian sebelum mengirim.");
+  if(!draft.photo||draft.photoSource!=="camera")throw new Error("Ambil foto langsung dari kamera sebelum mengirim.");
   let current={...draft};
   if(!current.serverId){
+    onProgress?.("Menyimpan foto dan laporan secara aman…");
     const body=new FormData();body.append("client_id",current.id);
     if(current.photo)body.append("photo",current.photo,current.photo.name||"laporan.jpg");
     const created=await apiFetch<{draft_id:string}>("/api/reports/drafts",{method:"POST",body});
@@ -44,17 +46,18 @@ export async function submitLocalDraft(draft:LocalDraft,allowRenewal=true):Promi
     await saveLocalDraft(current);
   }
   if(current.photo&&!current.analysis){
+    onProgress?.("AI sedang memeriksa kondisi dan kemiripan foto…");
     try{current.analysis=await apiFetch<DraftAnalysis>(`/api/reports/drafts/${current.serverId}/analyze`,{method:"POST"});}
     catch{current.analysis={draft_id:current.serverId!,ai_status:"unavailable"};}
     await saveLocalDraft(current);
   }
   let result;
-  try{result=await apiFetch<{id:string;status:string}>("/api/reports",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":current.id},body:JSON.stringify({
+  try{onProgress?.("Mengirim paket informasi kepada petugas…");result=await apiFetch<{id:string;status:string}>("/api/reports",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":current.id},body:JSON.stringify({
     draft_id:current.serverId,lat:current.location!.lat,lng:current.location!.lng,
     location_source:current.location!.source==="device"?"device":"map",location_label:current.locationLabel.trim(),
     description:current.description.trim()||null,details:current.details,reported_type:current.type,
     observed_at:current.timeKnown?current.observedAt:null,observation_time_known:current.timeKnown,
-    photo_source:current.photo?current.photoSource:"none",photo_captured_at:null,
+    photo_source:"camera",photo_captured_at:current.photoCapturedAt||current.createdAt,
   })});}catch(cause){
     // Renew only after the server positively identifies an unpublished expired
     // draft. Network/ambiguous failures retain the same draft and idempotency key.
@@ -65,7 +68,7 @@ export async function submitLocalDraft(draft:LocalDraft,allowRenewal=true):Promi
     current={...current,serverId:created.draft_id,analysis:undefined};
     await saveLocalDraft(current);
     // Observation time and source are retained; stale observations still require review.
-    return submitLocalDraft(current,false);
+    return submitLocalDraft(current,false,onProgress);
   }
   await deleteLocalDraft(current.id);reportsChanged();return result;
 }

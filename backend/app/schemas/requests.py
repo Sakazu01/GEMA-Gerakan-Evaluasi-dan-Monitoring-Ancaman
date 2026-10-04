@@ -42,8 +42,8 @@ class PublishReportRequest(BaseModel):
     details: ReportDetails | None = None
     reported_type: Literal["flood", "landslide", "fire"]
     observed_at: datetime | None = None
-    observation_time_known: bool = True
-    photo_source: Literal["camera", "gallery", "forwarded", "none"] = "none"
+    observation_time_known: Literal[True] = True
+    photo_source: Literal["camera"] = "camera"
     photo_captured_at: datetime | None = None
 
     @model_validator(mode="after")
@@ -90,32 +90,20 @@ class ObserverLocation(BaseModel):
 
 class ObservationRequest(BaseModel):
     model_config = {"extra": "forbid"}
-    value: Literal["seen", "not_observed", "unsure"]
-    source: Literal["direct", "secondhand"] | None = None
-    observed_at: datetime | None = None
+    value: Literal["seen", "not_observed"]
+    source: Literal["direct"] = "direct"
+    observed_at: datetime
     note: str | None = Field(default=None, max_length=500)
-    at_report_location: bool | None = None
-    observer_location: ObserverLocation | None = None
+    at_report_location: Literal[True] = True
+    observer_location: ObserverLocation
 
     @model_validator(mode="after")
     def validate_observation(self):
-        if self.value != "unsure" and (not self.source or not self.observed_at):
-            raise ValueError("Isi sumber dan waktu pengamatan")
-        if self.value == "not_observed" and (not self.at_report_location or not self.note or not self.note.strip()):
-            raise ValueError("Nyatakan keberadaan di lokasi dan konteks pengamatan")
-        if self.value == "not_observed" and self.source != "direct":
-            raise ValueError("Tidak melihat saat berada di lokasi harus merupakan pengamatan langsung")
-        times = [self.observed_at, self.observer_location.measured_at if self.observer_location else None]
+        if self.value == "not_observed" and (not self.note or not self.note.strip()):
+            raise ValueError("Jelaskan singkat alasan memilih Palsu")
+        times = [self.observed_at, self.observer_location.measured_at]
         if any(t is not None and t.tzinfo is None for t in times):
             raise ValueError("Waktu harus menyertakan zona waktu")
-        if self.value == "unsure":
-            self.source = None
-            self.observed_at = None
-            self.observer_location = None
-        if self.source == "secondhand":
-            self.observer_location = None
-        if self.value != "not_observed":
-            self.at_report_location = None
         return self
 
 

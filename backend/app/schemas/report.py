@@ -55,6 +55,8 @@ class ReportOut(BaseModel):
     type: DisasterType
     severity: Severity | None
     ai_summary: str | None
+    ai_confidence: str | None = None
+    ai_limitations: str | None = None
     description: str | None = None
     details: dict[str, Any] | None = None
     location_label: str
@@ -83,3 +85,6 @@ class ReportOut(BaseModel):
     observation_counts: dict[str, int] = Field(default_factory=dict)
     awareness_radius_m: int | None = None
     review_requested: bool = False
+    provenance_status: str = "not_requested"
+    internal_match_count: int = 0
+    web_match_count: int = 0

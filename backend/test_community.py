@@ -67,11 +67,13 @@ class CommunityTests(unittest.TestCase):
 
     def test_freshness_and_demo_filter_shared_policy(self):
         self.assertTrue(trust.active_public(row(),NOW))
+        self.assertFalse(trust.visible_on_public_map(row(responder_status="PENDING"),NOW))
+        self.assertTrue(trust.visible_on_public_map(row(responder_status="ACCEPTED"),NOW))
         for changes in ({"is_demo":True},{"status":"held"},{"expires_at":NOW.isoformat()},{"expires_at":None}):
             self.assertFalse(trust.active_public(row(**changes),NOW))
         self.assertEqual(trust.notice_radius(row()),500)
         self.assertIsNone(trust.notice_radius(row(verification_status="under_review")))
-        self.assertEqual(trust.notice_radius(row(verification_status="confirmed",awareness_radius_override_m=1200)),1200)
+        self.assertEqual(trust.notice_radius(row(verification_status="confirmed",awareness_radius_override_m=1200)),500)
 
     def test_observation_counts_respect_source_freshness_and_owner(self):
         base={"user_id":"other","source":"direct","value":"seen","observed_at":NOW.isoformat(),"received_at":NOW.isoformat(),"proximity_eligible":True}
@@ -81,18 +83,20 @@ class CommunityTests(unittest.TestCase):
         self.assertEqual(trust.observation_counts(row(observations=observations),NOW),{"direct_seen_nearby":1,"direct_not_observed_nearby":1,"secondhand":1,"unsure":1})
 
     def test_negative_observation_requires_context(self):
-        with self.assertRaises(ValueError):ObservationRequest(value="not_observed",source="direct",observed_at=NOW)
-        body=ObservationRequest(value="unsure",source="direct",observed_at=NOW)
-        self.assertIsNone(body.source)
-        self.assertIsNone(body.observed_at)
-
-    def test_secondhand_never_stores_device_coordinates_or_claims_direct_absence(self):
         location={"lat":-6.9,"lng":107.6,"accuracy_m":25,"measured_at":NOW}
-        body=ObservationRequest(value="seen",source="secondhand",observed_at=NOW,observer_location=location,at_report_location=True)
-        self.assertIsNone(body.observer_location)
-        self.assertIsNone(body.at_report_location)
+        with self.assertRaises(ValueError):ObservationRequest(value="not_observed",source="direct",observed_at=NOW,observer_location=location)
+        body=ObservationRequest(value="seen",source="direct",observed_at=NOW,observer_location=location)
+        self.assertEqual(body.source,"direct")
+        self.assertEqual(body.value,"seen")
+
+    def test_votes_require_direct_device_location(self):
+        location={"lat":-6.9,"lng":107.6,"accuracy_m":25,"measured_at":NOW}
+        body=ObservationRequest(value="seen",source="direct",observed_at=NOW,observer_location=location,at_report_location=True)
+        self.assertEqual(body.observer_location.lat,-6.9)
         with self.assertRaises(ValueError):
-            ObservationRequest(value="not_observed",source="secondhand",observed_at=NOW,at_report_location=True,note="Warga lain tidak melihat asap.")
+            ObservationRequest(value="seen",source="secondhand",observed_at=NOW,observer_location=location,at_report_location=True)
+        with self.assertRaises(ValueError):
+            ObservationRequest(value="unsure",source="direct",observed_at=NOW,observer_location=location,at_report_location=True)
 
     def test_nearby_independent_of_feed_and_error_not_empty(self):
         with patch("app.api.nearby.reports_service.active_high_risk_candidates",return_value=[row()]),patch("app.api.nearby.utcnow",return_value=NOW),patch("app.api.nearby.enforce_read_quota"):
@@ -106,7 +110,7 @@ class CommunityTests(unittest.TestCase):
     def test_location_cannot_be_stale_or_imprecise(self):
         location={"lat":-6.9,"lng":107.6,"accuracy_m":35,"measured_at":NOW.isoformat()}
         self.assertTrue(trust.proximity_eligible(row(),location,NOW))
-        self.assertFalse(trust.proximity_eligible(row(),location,NOW+timedelta(minutes=11)))
+        self.assertFalse(trust.proximity_eligible(row(),location,NOW+timedelta(minutes=6)))
         self.assertFalse(trust.proximity_eligible(row(),location|{"accuracy_m":200},NOW))
 
     def test_quota_failure_is_fail_closed_and_hides_network(self):
@@ -117,6 +121,14 @@ class CommunityTests(unittest.TestCase):
             enforce_quota(request,USER,"submit")
         self.assertEqual(err.exception.status_code,429)
         self.assertNotIn("192.0.2.1",str(client.rpc.call_args))
+
+    def test_submit_quota_is_one_per_180_seconds_with_loose_network_limit(self):
+        request=StarletteRequest({"type":"http","headers":[],"client":("192.0.2.1",123)})
+        client=MagicMock();client.rpc.return_value.execute.return_value.data={"allowed":True,"retry_after_seconds":180}
+        with patch("app.services.quota.get_client",return_value=client),patch.object(settings,"rate_limit_salt","test-salt"):
+            enforce_quota(request,USER,"submit")
+        params=client.rpc.call_args.args[1]
+        self.assertEqual((params["p_limit"],params["p_window_seconds"],params["p_network_limit"]),(1,180,20))
 
     def test_read_quota_failure_keeps_public_read_access(self):
         request=StarletteRequest({"type":"http","headers":[],"client":("192.0.2.1",123)})

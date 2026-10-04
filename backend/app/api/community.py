@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.core.config import settings
-from app.deps.auth import require_user, require_moderator
+from app.deps.auth import require_user, require_moderator, require_staff
 from app.schemas.requests import ObservationRequest, AbuseRequest, DecisionRequest
 from app.services import reports
 from app.services.clock import utcnow
@@ -57,12 +57,12 @@ def abuse(report_id: UUID, body: AbuseRequest, request: Request, user_id: str = 
 
 
 @router.get("/moderation/reports")
-def queue(user_id: str = Depends(require_moderator), limit: int = Query(default=50, ge=1, le=100), offset: int = Query(default=0, ge=0)):
+def queue(user_id: str = Depends(require_staff), limit: int = Query(default=50, ge=1, le=100), offset: int = Query(default=0, ge=0)):
     return reports.list_all_for_monitoring(limit, offset)
 
 
 @router.get("/moderation/reports/{report_id}")
-def private_detail(report_id: UUID, user_id: str = Depends(require_moderator)):
+def private_detail(report_id: UUID, user_id: str = Depends(require_staff)):
     row = reports.get_row(str(report_id))
     if not row or row["status"] == "draft":
         raise HTTPException(404, "Laporan tidak tersedia")

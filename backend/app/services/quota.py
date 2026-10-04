@@ -8,11 +8,22 @@ from fastapi import HTTPException, Request
 from app.core.config import settings
 from app.services.supabase_client import get_client
 
-LIMITS = {"analyze": 5, "draft": 10, "submit": 3, "observation": 10, "abuse": 5, "chat": 10, "moderation": 30, "push": 10}
+# (user limit, window seconds, network limit). The network limit is deliberately
+# looser because many legitimate residents can share one public IP.
+QUOTAS = {
+    "analyze": (5, 600, 100),
+    "draft": (10, 600, 200),
+    "submit": (1, 180, 20),
+    "observation": (10, 600, 200),
+    "abuse": (5, 600, 100),
+    "chat": (10, 600, 200),
+    "moderation": (30, 600, 600),
+    "push": (10, 600, 200),
+}
 
 
 def enforce_quota(request: Request, user_id: str, scope: str) -> None:
-    limit = LIMITS[scope]
+    limit, window_seconds, network_limit = QUOTAS[scope]
     secret = settings.rate_limit_salt or settings.supabase_secret_key
     if not secret:
         raise HTTPException(503, "Layanan pembatasan belum dikonfigurasi")
@@ -21,7 +32,7 @@ def enforce_quota(request: Request, user_id: str, scope: str) -> None:
     try:
         result = get_client().rpc("take_quota", {
             "p_scope": scope, "p_user": user_id, "p_network": digest,
-            "p_limit": limit, "p_network_limit": limit * 20, "p_window_seconds": 600,
+            "p_limit": limit, "p_network_limit": network_limit, "p_window_seconds": window_seconds,
         }).execute().data
     except Exception:
         raise HTTPException(503, "Permintaan belum dapat diproses. Coba lagi.") from None

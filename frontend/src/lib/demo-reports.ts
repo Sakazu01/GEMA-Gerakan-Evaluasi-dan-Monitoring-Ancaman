@@ -1,6 +1,6 @@
 import type { DisasterType, LocationSource, Report, Severity } from "@/types/report";
 
-// Radius perhatian mengikuti PRD v2.3 dan harus sama dengan backend.
+// Radius informasi komunitas tetap 500 meter untuk semua tingkat keparahan.
 // Warna dan label persis sesuai desain Figma "Tool tip detail bencana"
 // (https://www.figma.com/design/GEvmpaKV6swe0PCwgyaT2Z/GEMA?node-id=223-8863).
 export const severityMap: Record<Severity, {
@@ -12,9 +12,9 @@ export const severityMap: Record<Severity, {
   badgeBg: string;
 }> = {
   rendah: { color: "#0D5D3A", textColor: "#FFFFFF", warningRadiusM: 500, label: "Indikasi visual ringan", radiusLabel: "jangkauan informasi 500 m", badgeBg: "#DCFCE7" },
-  sedang: { color: "#FFBB00", textColor: "#0F172A", warningRadiusM: 1000, label: "Indikasi visual sedang", radiusLabel: "jangkauan informasi 1 km", badgeBg: "#FEF3C7" },
-  tinggi: { color: "#CF0003", textColor: "#FFFFFF", warningRadiusM: 3000, label: "Indikasi visual tinggi", radiusLabel: "jangkauan informasi 3 km", badgeBg: "#FEE2E2" },
-  kritis: { color: "#242424", textColor: "#FFFFFF", warningRadiusM: 10000, label: "Indikasi visual kritis", radiusLabel: "jangkauan informasi 10 km", badgeBg: "#242424" },
+  sedang: { color: "#FFBB00", textColor: "#0F172A", warningRadiusM: 500, label: "Indikasi visual sedang", radiusLabel: "jangkauan informasi 500 m", badgeBg: "#FEF3C7" },
+  tinggi: { color: "#CF0003", textColor: "#FFFFFF", warningRadiusM: 500, label: "Indikasi visual tinggi", radiusLabel: "jangkauan informasi 500 m", badgeBg: "#FEE2E2" },
+  kritis: { color: "#242424", textColor: "#FFFFFF", warningRadiusM: 500, label: "Indikasi visual kritis", radiusLabel: "jangkauan informasi 500 m", badgeBg: "#242424" },
 };
 
 // Target eskalasi instansi per tingkat keparahan -- dari proposal tim (Tabel 4.1). Teks

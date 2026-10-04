@@ -63,12 +63,12 @@ def analyze_draft(report_id: str,user_id: str):
 
 
 @router.post("/reports/drafts")
-def create_draft(request: Request,photo: UploadFile | None = None,client_id: UUID | None = Form(default=None),user_id: str = Depends(require_user)):
+def create_draft(request: Request,photo: UploadFile,client_id: UUID | None = Form(default=None),user_id: str = Depends(require_user)):
     enforce_quota(request,user_id,"draft")
     existing=reports_service.get_row(str(client_id),user_id) if client_id else None
     if existing:
         return {"draft_id":existing["id"],"ai_status":existing["ai_status"]}
-    data,mime,sha,phash=read_photo(photo) if photo else (None,"image/jpeg",None,None)
+    data,mime,sha,phash=read_photo(photo)
     draft=reports_service.create_raw_draft(user_id,data,mime,sha,phash,str(client_id) if client_id else None)
     return {"draft_id":draft,"ai_status":"not_requested"}
 

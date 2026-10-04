@@ -47,7 +47,7 @@ class PushTests(unittest.TestCase):
         self.assertEqual(database.writes[-1][1]["last_error_code"],"superseded")
 
     def test_device_location_must_be_fresh(self):
-        database,send=self.deliver(sub_changes={"location_mode":"device","location_updated_at":(NOW-timedelta(minutes=11)).isoformat(),"accuracy_m":25})
+        database,send=self.deliver(sub_changes={"location_mode":"device","location_updated_at":(NOW-timedelta(minutes=6)).isoformat(),"accuracy_m":25})
         send.assert_not_called()
         self.assertEqual(database.writes[-1][1]["state"],"sent")
 

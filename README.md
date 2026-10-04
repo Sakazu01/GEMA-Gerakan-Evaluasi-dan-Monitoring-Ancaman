@@ -1,6 +1,6 @@
 # GEMA — Gerakan Evaluasi dan Monitoring Ancaman
 
-Platform kesiapsiagaan komunitas: laporan indikasi bencana, pengamatan warga sekitar, keputusan pengelola yang tercatat, dan penerimaan responder.
+Platform pelaporan bencana cepat: warga memotret kejadian, sistem menyiapkan analisis dan bukti kemiripan, petugas menerima laporan melalui Telegram, lalu status yang diterima tampil pada peta.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -35,13 +35,13 @@ Platform kesiapsiagaan komunitas: laporan indikasi bencana, pengamatan warga sek
 
 ## Status implementasi FIK FAIR
 
-Perubahan kode untuk menangani ketidakpastian informasi tersedia di workspace. Laporan yang meragukan ditahan untuk tinjauan; AI hanya mengklasifikasikan isi foto. Warga memberi pengamatan, dan pengelola memutuskan dengan alasan serta audit.
+Alur terbaru tersedia di branch `dev`. Warga memakai sesi anonim, mengambil foto langsung dari kamera, dan mengirim laporan tanpa form login. AI menjelaskan kondisi visual, mesin provenance membandingkan foto dengan laporan GEMA dan sumber web, sedangkan petugas tetap mengambil keputusan melalui Telegram. Warga dengan lokasi valid maksimal 500 meter dapat memilih **Konfirmasi** atau **Palsu**.
 
 - [Hasil implementasi dan test](docs/fik-fair/hasil-implementasi.md)
 - [Konfigurasi, migrasi, dan operasi](docs/fik-fair/operasional.md)
 - [Indeks spesifikasi FIK FAIR](docs/fik-fair/README.md), [implementation.md](implementation.md), [revisi.md](revisi.md), [ui.md](ui.md)
 
-Migrasi/layanan publik belum diperbarui oleh perubahan workspace ini. Grouping incident, kemitraan resmi, serta evaluasi lapangan tetap roadmap.
+Implementasi mencakup migrasi 011, grouping incident dasar, paket bukti Telegram, dashboard pemerintah read-only, dan pengujian lokal. Kredensial provider eksternal, deployment, kemitraan resmi, serta evaluasi lapangan tetap harus disiapkan pada lingkungan staging/produksi.
 
 ## Demo
 
@@ -49,14 +49,14 @@ Alamat deployment yang tercantum sebelumnya: https://amusing-communication-produ
 
 ## Tujuan
 
-GEMA membantu komunitas menghadapi informasi bencana yang belum pasti: membedakan laporan, waktu pengamatan, bukti langsung, informasi dari orang lain, hasil visual AI, keputusan pengelola, dan penerimaan responder. Fokus FIK FAIR: **Menembus Ketidakpastian: Inovasi Solutif untuk Komunitas Masa Depan**, dalam tema IGNITE dan SDG 9, 11, 13.
+GEMA membantu warga menyampaikan kondisi bencana secara singkat dan memberi petugas paket informasi yang dapat ditelusuri: foto kamera, waktu dan lokasi, analisis visual AI, kemiripan internal/web, serta tanggapan warga sekitar. Fokus FIK FAIR: **Menembus Ketidakpastian: Inovasi Solutif untuk Komunitas Masa Depan**, dalam tema IGNITE dan SDG 9, 11, 13.
 
 ## Struktur
 
 ```text
-frontend/                 Next.js, Leaflet, form, pengamatan, dashboard pengelola
+frontend/                 Next.js, Leaflet, kamera, pengamatan, dashboard pemerintah
 backend/                  FastAPI, auth, quota, kebijakan, worker
-backend/migrations/       001–010, termasuk data legacy, storage privat, dan retensi
+backend/migrations/       001–011, termasuk storage privat, provenance, incident, dan voting
 docs/fik-fair/            spesifikasi, hasil test, operasional, submission
 ```
 
@@ -64,12 +64,13 @@ docs/fik-fair/            spesifikasi, hasil test, operasional, submission
 
 - Node 24 untuk menjalankan seluruh suite test frontend; Python 3.11+.
 - Supabase Auth, Postgres, dan Storage, dengan project staging untuk pemeriksaan awal.
-- Gemini opsional untuk analisis; jalur laporan manual tetap tersedia.
-- Telegram dan Web Push opsional, dikonfigurasi terpisah dari alur utama.
+- Gemini opsional untuk analisis visual; kegagalannya tidak menghapus laporan.
+- Google Cloud Vision Web Detection opsional untuk pencarian kemiripan web; tanpa kredensial, laporan tetap dikirim dengan status provider tidak tersedia.
+- Telegram dan Web Push opsional untuk pengiriman keluar; laporan tetap tersimpan jika provider sedang gagal.
 
 ## Cara menjalankan (How to build & run)
 
-Jalankan migrasi yang belum diterapkan secara berurutan sampai **010**. Aktifkan anonymous sign-in, siapkan akun permanen dan role moderator, serta periksa bucket privat. Detail di [operasional](docs/fik-fair/operasional.md).
+Jalankan migrasi yang belum diterapkan secara berurutan sampai **011**. Aktifkan anonymous sign-in, siapkan akun permanen dengan role `responder` atau `moderator` untuk akses riwayat pemerintah, lalu periksa bucket privat. Detail di [operasional](docs/fik-fair/operasional.md).
 
 Salin contoh environment ke `backend/.env` dan `frontend/.env.local`, lalu isi di mesin Anda. Frontend memerlukan public Supabase URL/key; secret/service-role key hanya di backend.
 
@@ -92,7 +93,7 @@ Buka http://localhost:3000; health backend http://localhost:8000/health. Setelah
 
 ## Dua tampilan peta
 
-Beranda dibuka pada **Daftar**. Pilih **Peta**, lalu **Laporan dan status bukti** atau **Kepadatan pelapor**. Marker belum terkonfirmasi memakai warna netral. Lingkaran hanya menampilkan jangkauan informasi laporan terkonfirmasi: default 500 m/1 km/3 km/10 km, atau override pengelola.
+Beranda langsung membuka **Peta**. Laporan yang masih menunggu petugas dapat menghasilkan notice privat bagi warga sekitar, tetapi belum menjadi marker umum. Marker publik baru tampil sesudah responder menekan **Terima Laporan** di Telegram. Radius notice dan tanggapan komunitas tetap 500 meter untuk semua tingkat keparahan.
 
 Kepadatan menghitung pelapor unik pada laporan aktif dalam kelompok 50 m, dengan warna biru dan angka. Tidak ada area kosong yang diberi label aman. Laporan berlaku 12 jam dari waktu pengamatan sebagai konfigurasi pilot; demo dan expired dikecualikan. Nearby mengambil kandidat sendiri di backend, dengan maksimal tiga notice, sehingga tidak bergantung 50 laporan pertama feed.
 
@@ -118,7 +119,7 @@ Chatbot menjawab jumlah, daftar terbaru, dan ringkasan laporan aktif non-demo ya
 
 ## Notifikasi responder Telegram
 
-Publish menyimpan laporan dan event triase dalam transaksi; worker mengirim ke grup privat. Kesalahan provider yang diketahui dicoba ulang dengan backoff; hasil ambigu menjadi `unknown` dan memerlukan peninjauan pengelola.
+Publish menyimpan laporan dan event triase dalam transaksi; worker mengirim foto, analisis AI, keterbatasan, bukti kemiripan, dan ringkasan suara ke grup privat. Kesalahan provider yang diketahui dicoba ulang dengan backoff; hasil ambigu menjadi `unknown` dan masuk riwayat operasional.
 
 Callback memeriksa secret, grup, pesan, dan pemetaan responder/role server. **ACCEPTED berarti laporan diterima responder.** Tracker memperbarui selama halaman aktif; prototipe belum menyimpan status berangkat/tiba.
 
@@ -126,9 +127,9 @@ Konfigurasi bot, pendaftaran responder, dan webhook HTTPS dijelaskan pada [opera
 
 ## Pengamatan, draft, dan push
 
-Notice memakai kalimat “Ada laporan ... di sekitar lokasi Anda” atau “di area yang Anda pantau”. Pengguna dapat memilih melihat tanda, tidak melihat saat berada di lokasi, atau belum tahu; sumber langsung dan informasi orang lain dicatat terpisah. Jumlah jawaban tidak otomatis mengonfirmasi atau menghapus laporan.
+Notice memakai kalimat “Ada laporan ... di sekitar lokasi Anda” atau “di area yang Anda pantau”. Pengguna yang lolos pemeriksaan lokasi dapat memilih **Konfirmasi** atau **Palsu**. Enam suara Palsu yang lebih banyak daripada Konfirmasi menyembunyikan laporan yang masih menunggu petugas. Laporan yang sudah diterima petugas tidak dibatalkan otomatis dan petugas menerima pembaruan bukti.
 
-Draft disimpan sebelum AI. IndexedDB menyimpan draft lokal tujuh hari, dan mengirim draft yang sudah diajukan ketika aplikasi terbuka serta koneksi tersedia. Retry memakai idempotency key yang sama. Berkas maksimal 10 MiB, kompresi client, validasi/decode server, metadata dibersihkan, foto privat.
+Foto hanya dapat berasal dari kamera pada alur produksi. Draft disimpan sebelum AI. IndexedDB menyimpan draft lokal tujuh hari, dan mengirim draft yang sudah diajukan ketika aplikasi terbuka serta koneksi tersedia. Retry memakai idempotency key yang sama. Berkas maksimal 10 MiB, kompresi client, validasi/decode server, metadata dibersihkan, foto privat. Backend membatasi penerbitan menjadi satu laporan setiap 180 detik per identitas anonim, dengan batas jaringan tambahan.
 
 Push memiliki service worker, VAPID, subscription, preferensi area, dan unsubscribe. Aktifkan setelah mengisi environment dan menguji provider. GPS browser tidak dipantau terus menerus saat web tertutup.
 

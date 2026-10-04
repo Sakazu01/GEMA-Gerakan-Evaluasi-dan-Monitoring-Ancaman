@@ -22,6 +22,11 @@ def active_public(row: dict[str, Any], now: datetime) -> bool:
     return row.get("status") == "active" and not row.get("is_demo", False) and expires is not None and expires > now
 
 
+def visible_on_public_map(row: dict[str, Any], now: datetime) -> bool:
+    """Only responder-accepted reports become public map markers."""
+    return active_public(row, now) and row.get("responder_status") == "ACCEPTED"
+
+
 def observation_counts(row: dict[str, Any], now: datetime) -> dict[str, int]:
     counts = {"direct_seen_nearby": 0, "direct_not_observed_nearby": 0, "secondhand": 0, "unsure": 0}
     for obs in row.get("observations") or []:
@@ -55,8 +60,6 @@ def notice_radius(row: dict[str, Any]) -> int | None:
     status = row.get("verification_status", "unconfirmed")
     if status == "under_review":
         return None
-    if status == "unconfirmed":
+    if status in ("unconfirmed", "confirmed"):
         return settings.confirmation_radius_m
-    if status == "confirmed":
-        return row.get("awareness_radius_override_m") or {"rendah": 500, "sedang": 1000, "tinggi": 3000, "kritis": 10000}.get(row.get("severity"))
     return None
