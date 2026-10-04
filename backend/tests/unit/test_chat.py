@@ -41,6 +41,10 @@ class ReadOnlyTable:
         self.calls.append(("eq", key, value))
         return self
 
+    def or_(self, expression):
+        self.calls.append(("or_", expression))
+        return self
+
     def order(self, key, desc=False):
         self.calls.append(("order", key, desc))
         return self
@@ -106,7 +110,7 @@ class ChatTests(unittest.TestCase):
         self.assertIn("1 laporan", response.json()["answer"])
         self.assertEqual(table.calls[0], ("select", "id,type,severity,ai_summary,location_label,published_at,verification_status,observed_at"))
         self.assertIn(("eq", "status", "active"), table.calls)
-        self.assertIn(("eq", "is_demo", False), table.calls)
+        self.assertIn(("or_", "is_demo.eq.false,accepted_by.eq.Simulasi demo"), table.calls)
         self.assertIn(("gt", "expires_at", NOW.isoformat()), table.calls)
         self.assertEqual(set(response.json()), {"answer", "sources"})
 

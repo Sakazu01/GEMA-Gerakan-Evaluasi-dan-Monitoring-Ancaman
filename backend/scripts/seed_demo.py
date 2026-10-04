@@ -358,7 +358,7 @@ def build_showcase_rows(now: datetime | None = None, seed: int = 2026, count: in
                 "location_source": "demo", "location_label": f"Sekitar {name}",
                 "published_at": published.isoformat(), "observed_at": observed.isoformat(),
                 "observation_time_known": True,
-                "expires_at": (observed + timedelta(hours=settings.report_active_ttl_hours)).isoformat(),
+                "expires_at": (now + timedelta(days=7)).isoformat(),  # simulasi tetap tampil selama masa demo
                 "verification_status": "unconfirmed", "closure_reason": None,
                 "photo_path": None, "photo_source": "none", "risk_flags": ["demo_fixture"],
                 "author_id": _fake_author(1000 + index), "is_demo": True,
@@ -396,7 +396,7 @@ def main() -> None:
 
     print(f"masuk: {len(rows)} fixture DEMO privat dan {len(showcase)} titik simulasi")
     if showcase:
-        print("titik simulasi tampil di peta hanya bila backend dijalankan dengan DEMO_SHOWCASE=true")
+        print("titik simulasi selalu tampil di peta publik selama 7 hari, tanpa DEMO_SHOWCASE")
     else:
         print("fixture tidak terlihat di feed/nearby/density/chat publik")
     print("UUID fixture bukan token login. Gunakan Auth nyata dan alur laporan di staging untuk demo UI.")

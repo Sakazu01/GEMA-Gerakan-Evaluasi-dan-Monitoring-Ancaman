@@ -17,6 +17,7 @@ from app.services.trust import active_public, visible_on_public_map, observation
 _SELECT = "*, false_votes(voter_id), help_votes(value), observations(*), abuse_reports(created_at)"
 _PUBLIC_COORD_DECIMALS = 3
 PHOTO_BUCKET = "report-photos"
+SIMULATION_LABEL = "Simulasi demo"
 
 
 def _to_public(row: dict[str, Any]) -> ReportOut:
@@ -62,10 +63,8 @@ def _to_public(row: dict[str, Any]) -> ReportOut:
 def public_active_query(columns: str = _SELECT):
     query = get_client().table("reports").select(columns).eq("status", "active").gt("expires_at", utcnow().isoformat())
     # Laporan aktif langsung tampil dengan label belum dikonfirmasi; penerimaan responder hanya menaikkan statusnya.
-    if settings.demo_showcase:
-        # Data simulasi berlabel "DEMO" ikut tampil hanya bila showcase dinyalakan eksplisit.
-        return query
-    return query.eq("is_demo", False)
+    # Titik simulasi seed (accepted_by "Simulasi demo") selalu ikut tampil agar peta terisi; data demo lain tidak.
+    return query.or_(f"is_demo.eq.false,accepted_by.eq.{SIMULATION_LABEL}")
 
 
 def list_active(limit: int, cursor: str | None = None, cursor_id: str | None = None) -> list[ReportOut]:
@@ -133,7 +132,7 @@ def get_row(report_id: str, author_id: str | None = None) -> dict[str, Any] | No
 def get_active(report_id: str) -> ReportOut | None:
     row = get_row(report_id)
     # Closed reports expose a safe correction/closure, but never their original raw photo.
-    if not row or (row.get("is_demo") and not settings.demo_showcase) or row["status"] not in ("active","closed"):
+    if not row or (row.get("is_demo") and row.get("accepted_by") != SIMULATION_LABEL) or row["status"] not in ("active","closed"):
         return None
     if row["status"] == "active" and not active_public({**row,"is_demo":False},utcnow()):
         row = {**row,"status":"closed","closure_reason":"expired"}
