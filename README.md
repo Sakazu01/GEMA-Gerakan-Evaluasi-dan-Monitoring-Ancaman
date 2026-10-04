@@ -32,7 +32,6 @@ GEMA adalah aplikasi web agar warga bisa melaporkan banjir, tanah longsor, dan k
 - [Pengujian](#pengujian)
 - [Seberapa akurat AI-nya](#seberapa-akurat-ai-nya)
 - [Deploy](#deploy)
-- [Dokumentasi lanjutan](#dokumentasi-lanjutan)
 
 ## Masalah yang ingin dijawab
 
@@ -128,10 +127,6 @@ Berikut yang diperiksa, berurutan, sejak foto diambil sampai laporan tiba di pet
 │   ├── migrations/            Langkah pembuatan tabel database (001 sampai 011)
 │   ├── scripts/               Skrip bantu: data demo, cek kesiapan, webhook Telegram, evaluasi AI
 │   └── tests/                 Pengujian: unit/, sql/, fixtures/ (foto uji), output/ (hasil evaluasi)
-├── docs/
-│   ├── fik-fair/              Spesifikasi, hasil pengujian, panduan operasional
-│   ├── perencanaan/           Rencana, revisi, notulen, perubahan dari proposal
-│   └── pitch/                 Naskah pitching dan panduan bisnis
 ├── LICENSE
 └── README.md
 ```
@@ -140,7 +135,7 @@ Berikut yang diperiksa, berurutan, sejak foto diambil sampai laporan tiba di pet
 
 Kebutuhan: Node.js 24, Python 3.11 ke atas, dan sebuah project Supabase.
 
-**1. Siapkan database.** Di Supabase, buka SQL Editor lalu jalankan berkas di `backend/migrations/` berurutan dari 001 sampai 011. Aktifkan Anonymous sign-ins di menu Authentication. Detail ada di [panduan operasional](docs/fik-fair/operasional.md).
+**1. Siapkan database.** Di Supabase, buka SQL Editor lalu jalankan berkas di `backend/migrations/` berurutan dari 001 sampai 011. Aktifkan Anonymous sign-ins di menu Authentication.
 
 **2. Isi pengaturan.** Salin `backend/.env.example` menjadi `backend/.env`, dan `frontend/.env.example` menjadi `frontend/.env.local`. Isi alamat dan kunci Supabase, kunci model AI (`MODEL_API_KEY`), dan `RATE_LIMIT_SALT` (teks acak apa saja). Kunci rahasia hanya untuk server, jangan dimasukkan ke frontend.
 
@@ -208,14 +203,7 @@ Pada pengujian awal dengan 3 foto (satu banjir, satu kebakaran, satu longsor), k
 
 ## Deploy
 
-Aplikasi dipasang di Railway sebagai dua layanan: satu untuk folder `frontend/` dan satu untuk `backend/`. Pengaturan yang diawali `NEXT_PUBLIC_` dibaca saat pembuatan aplikasi, jadi frontend perlu dibangun ulang setelah pengaturan itu diganti. Di layanan nyata, isi `CORS_ORIGINS`, `PUBLIC_APP_URL`, `RATE_LIMIT_SALT`, dan kunci layanan di server, atur `DEMO_MODE=false`, dan pastikan semua migrasi database sudah dijalankan. Alamat demo: https://amusing-communication-production-abe3.up.railway.app/. Langkah pemeriksaan sebelum rilis ada di [panduan operasional](docs/fik-fair/operasional.md).
-
-## Dokumentasi lanjutan
-
-- [Indeks dokumentasi](docs/README.md)
-- [Spesifikasi dan hasil pengujian FIK FAIR](docs/fik-fair/README.md)
-- [Perubahan dari proposal penyisihan](docs/perencanaan/PERUBAHAN.md)
-- [Naskah pitching](docs/pitch/PITCH_SCRIPT_4M30.md)
+Aplikasi dipasang di Railway sebagai dua layanan: satu untuk folder `frontend/` dan satu untuk `backend/`. Pengaturan yang diawali `NEXT_PUBLIC_` dibaca saat pembuatan aplikasi, jadi frontend perlu dibangun ulang setelah pengaturan itu diganti. Di layanan nyata, isi `CORS_ORIGINS`, `PUBLIC_APP_URL`, `RATE_LIMIT_SALT`, dan kunci layanan di server, atur `DEMO_MODE=false`, dan pastikan semua migrasi database sudah dijalankan. Alamat demo: https://amusing-communication-production-abe3.up.railway.app/.
 
 ## Lisensi
 
