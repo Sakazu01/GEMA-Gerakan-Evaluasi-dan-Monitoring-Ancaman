@@ -1,9 +1,12 @@
-"""Cek kecil untuk kegagalan penyimpanan draft. Jalankan: python test_analyze.py"""
+"""Cek kecil untuk kegagalan penyimpanan draft. Jalankan dari folder backend: python -m tests.unit.test_analyze"""
 
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from app.services.model import AnalyzeResult
-from app.services.reports import create_draft
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from app.services.model import AnalyzeResult  # noqa: E402
+from app.services.reports import create_draft  # noqa: E402
 
 
 def test_insert_gagal_menghapus_foto():

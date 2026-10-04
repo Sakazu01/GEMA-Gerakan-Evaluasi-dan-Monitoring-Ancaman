@@ -3,10 +3,10 @@ import {useEffect,useState} from "react";
 import dynamic from "next/dynamic";
 import type {MapLocation} from "@/lib/demo-reports";
 import {requestDeviceLocation} from "@/lib/geolocation";
-const PetaWarga=dynamic(()=>import("@/components/dashboard/PetaWarga").then(m=>m.PetaWarga),{ssr:false,loading:()=> <p className="p-6">Memuat peta…</p>});
-export default function Home(){
+const WargaDashboard=dynamic(()=>import("@/components/dashboard/WargaDashboard").then(m=>m.WargaDashboard),{ssr:false,loading:()=> <p className="p-6">Memuat ringkasan…</p>});
+export default function Ringkasan(){
   const [location,setLocation]=useState<MapLocation|null>(null);
   const [locationMessage,setLocationMessage]=useState("");
   useEffect(()=>{requestDeviceLocation(setLocation,setLocationMessage);},[]);
-  return <PetaWarga location={location} locationMessage={locationMessage} onLocationChange={setLocation}/>;
+  return <WargaDashboard location={location} locationMessage={locationMessage} onLocationChange={setLocation}/>;
 }

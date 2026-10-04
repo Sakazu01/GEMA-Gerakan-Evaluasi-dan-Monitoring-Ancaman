@@ -1,6 +1,6 @@
 # Menjalankan hasil implementasi GEMA
 
-Status 4 Oktober 2026: perubahan kode tersedia di branch `dev`, belum diterapkan ke Supabase atau deployment publik. Hasil test ada di [hasil-implementasi.md](hasil-implementasi.md), sedangkan keputusan produk lengkap berada di [NOTULEN_EVALUASI.md](../../NOTULEN_EVALUASI.md).
+Status 4 Oktober 2026: perubahan kode tersedia di branch `dev`, belum diterapkan ke Supabase atau deployment publik. Hasil test ada di [hasil-implementasi.md](hasil-implementasi.md), sedangkan keputusan produk lengkap berada di [NOTULEN_EVALUASI.md](../perencanaan/NOTULEN_EVALUASI.md).
 
 ## 1. Database dan identitas
 
@@ -72,7 +72,7 @@ on conflict(telegram_user_id) do update set user_id=excluded.user_id,label=exclu
 
 TELEGRAM_RESPONDER_IDS dapat membatasi ID tambahan, tetapi tidak menggantikan pemetaan di database. Backend memeriksa secret webhook, grup, pesan, dan identitas responder.
 
-Daftarkan webhook HTTPS melalui `rtk proxy .venv/Scripts/python.exe set_telegram_webhook.py https://HOST-BACKEND` dari folder backend. Langkah ini benar-benar mengubah konfigurasi bot; gunakan bot/grup pilot tim, dan lakukan hanya ketika layanan tersebut siap.
+Daftarkan webhook HTTPS melalui `rtk proxy .venv/Scripts/python.exe scripts/set_telegram_webhook.py https://HOST-BACKEND` dari folder backend. Langkah ini benar-benar mengubah konfigurasi bot; gunakan bot/grup pilot tim, dan lakukan hanya ketika layanan tersebut siap.
 
 Submit menyimpan laporan dan antrean dalam satu transaksi. Worker mengirim triase tanpa menunda respons warga. ACCEPTED berarti **laporan diterima responder**, belum menyatakan berangkat atau tiba.
 
@@ -109,10 +109,10 @@ Gunakan lingkungan/grup tim dengan data yang jelas berlabel simulasi. Jalankan a
 
 Pengujian otomatis menggunakan mock layanan luar dan PostgreSQL lokal. Anonymous Auth, storage Supabase, push provider, bot Telegram nyata, dan deployment belum diuji live pada perubahan ini. Jangan mengklaim akurasi AI, dampak anti-hoax, mitra resmi, atau kesiapan layanan darurat dari test otomatis.
 
-`backend/seed_demo.py` hanya untuk fixture database demo terpisah dan menolak berjalan tanpa `DEMO_MODE=true`. Fixture selalu `is_demo=true`, tidak masuk feed/nearby/density/chat publik, tidak membuat hasil AI atau foto palsu, dan tidak mengirim notifikasi. UUID fixture bukan token Auth. Untuk demonstrasi UI, gunakan alur laporan nyata pada project staging tim yang terisolasi dari publik; jangan mengganti filter demo di deployment publik.
+`backend/scripts/seed_demo.py` hanya untuk fixture database demo terpisah dan menolak berjalan tanpa `DEMO_MODE=true`. Fixture selalu `is_demo=true`, tidak masuk feed/nearby/density/chat publik, tidak membuat hasil AI atau foto palsu, dan tidak mengirim notifikasi. UUID fixture bukan token Auth. Untuk demonstrasi UI, gunakan alur laporan nyata pada project staging tim yang terisolasi dari publik; jangan mengganti filter demo di deployment publik.
 
 ## 7. Diagnostik konfigurasi tanpa perubahan layanan
 
-Dari root repo, `rtk proxy backend/.venv/Scripts/python.exe backend/check_readiness.py` menampilkan keberadaan konfigurasi, tanpa nilai rahasia. Tambahkan `--live` untuk GET pada skema Supabase dengan limit 0 serta metadata bucket; tidak mengambil isi laporan, membuat akun, mengubah database, atau mengirim notifikasi.
+Dari root repo, `rtk proxy backend/.venv/Scripts/python.exe backend/scripts/check_readiness.py` menampilkan keberadaan konfigurasi, tanpa nilai rahasia. Tambahkan `--live` untuk GET pada skema Supabase dengan limit 0 serta metadata bucket; tidak mengambil isi laporan, membuat akun, mengubah database, atau mengirim notifikasi.
 
 Pemeriksaan laptop pada 3 Oktober: salt quota telah dibuat pada `backend/.env` yang ignored; frontend `.env.local` belum tersedia; VAPID belum tersedia; worker/push tetap false. Hostname proyek Supabase dari konfigurasi gagal DNS, sementara `supabase.com` dan `example.com` berhasil. Ini belum membuktikan apakah project dipause, dihapus, atau URL berubah. Periksa project aktif dan Project URL pada dashboard, kemudian isi publishable/anon key frontend. Jangan memakai secret key backend pada frontend. Koneksi UI sesi ini tidak menyediakan browser pribadi yang dapat dikendalikan; Chromium lokal dipakai untuk test terisolasi.

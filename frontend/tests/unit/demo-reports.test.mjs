@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {isWarningZoneReport, severityMap, mapStyle, neutralSeverity, awarenessRadius} from "../src/lib/demo-reports.ts";
+import {isWarningZoneReport, severityMap, mapStyle, neutralSeverity, awarenessRadius} from "../../src/lib/demo-reports.ts";
 
 const now=Date.UTC(2026,9,3,12);
 const report={id:"test",status:"active",severity:"tinggi",is_demo:false,verification_status:"confirmed",expires_at:new Date(now+60000).toISOString()};

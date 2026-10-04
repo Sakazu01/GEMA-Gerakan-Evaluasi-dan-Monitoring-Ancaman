@@ -88,20 +88,20 @@ export default function AboutPage() {
                 <Card className="h-full border-slate-200">
                   <Icon aria-hidden="true" size={20} className="text-[#0D5D3A]" />
                   <p className="mt-2 text-sm font-semibold text-slate-900">{title}</p>
-                  <p className="mt-1 text-xs text-slate-600">{desc}</p>
+                  <p className="mt-1 text-sm text-slate-700">{desc}</p>
                 </Card>
               </Link>
             ))}
           </div>
 
           <Card className="mt-4 border-emerald-100 bg-emerald-50">
-            <p className="text-xs font-semibold text-[#0D5D3A]">Bersama, kita bisa lebih siap</p>
+            <p className="text-sm font-semibold text-[#0D5D3A]">Bersama, kita bisa lebih siap</p>
             <h3 className="mt-1 text-base font-bold text-slate-950">Membangun komunitas yang lebih aman</h3>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
               {stats.map((stat) => (
                 <div key={stat.label}>
                   <p className="text-lg font-extrabold text-[#0D5D3A]">{stat.value}</p>
-                  <p className="text-[11px] text-slate-600">{stat.label}</p>
+                  <p className="text-sm text-slate-700">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -114,7 +114,7 @@ export default function AboutPage() {
           <div className="mt-4 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
             {faqs.map((faq) => (
               <details key={faq.q} className="group p-4">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-semibold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden">
                   {faq.q}
                   <ChevronDown aria-hidden="true" size={18} className="shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
                 </summary>

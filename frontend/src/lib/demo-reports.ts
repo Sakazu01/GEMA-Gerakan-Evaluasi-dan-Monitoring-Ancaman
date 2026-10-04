@@ -134,7 +134,7 @@ export const titikKumpul: { name: string; city: string; lat: number; lng: number
   { name: "GOR Cenderawasih", city: "Jayapura", lat: -2.5330, lng: 140.7050 },
 ];
 
-function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+export function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);

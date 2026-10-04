@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     supabase_secret_key: str = ""
     model_api_key: str = ""
     demo_mode: bool = False
+    demo_showcase: bool = False
     cors_origins: str = "http://localhost:3000"
     tele_api: str = ""
     tele_chat_id: str = ""

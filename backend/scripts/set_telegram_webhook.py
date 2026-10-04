@@ -1,10 +1,12 @@
-"""Daftarkan webhook dari backend/.env: python set_telegram_webhook.py https://api.example.com"""
+"""Daftarkan webhook dari backend/.env. Dari folder backend: python -m scripts.set_telegram_webhook https://api.example.com"""
 
 import sys
+from pathlib import Path
 from urllib.parse import urlparse
 
-from app.core.config import settings
-from app.services.telegram import _call
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.core.config import settings  # noqa: E402
+from app.services.telegram import _call  # noqa: E402
 
 if __name__ == "__main__":
     if len(sys.argv) != 2 or urlparse(sys.argv[1]).scheme != "https" or not urlparse(sys.argv[1]).netloc:

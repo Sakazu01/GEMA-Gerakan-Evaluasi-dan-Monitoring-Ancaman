@@ -1,15 +1,17 @@
 """Read-only configuration/service checks. Never prints credentials or report data."""
 import argparse
 import json
+import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
 from dotenv import dotenv_values
 
-from app.core.config import settings
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.core.config import settings  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def configuration():

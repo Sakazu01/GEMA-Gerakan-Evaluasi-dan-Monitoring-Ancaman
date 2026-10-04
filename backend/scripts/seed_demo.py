@@ -1,12 +1,18 @@
 """Fixture privat pada database demo terpisah, bukan laporan untuk feed publik.
 
-Jalankan dari backend dengan DEMO_MODE=true: python seed_demo.py.
+Jalankan dari folder backend dengan DEMO_MODE=true: python -m scripts.seed_demo [--showcase].
 Tidak membuat sesi Auth, mengirim notifikasi, atau menjalankan analisis AI.
 """
 
+import math
+import random
+import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from uuid import NAMESPACE_URL, uuid5
 
-from app.core.config import settings
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.core.config import settings  # noqa: E402
 from app.services.supabase_client import get_client
 
 # Identitas fixture, bukan token Auth. Endpoint privat tetap memerlukan JWT valid.
@@ -280,6 +286,85 @@ def build_demo_rows(now: datetime | None = None) -> list[dict]:
     return rows
 
 
+# (nama area, lat, lng, jenis dominan, titik tersebar, pelapor di titik panas)
+_SEBARAN = [
+    ("Dago, Bandung", -6.8860, 107.6130, "landslide", 4, 7),
+    ("Cihampelas, Bandung", -6.8970, 107.6040, "flood", 4, 3),
+    ("Buah Batu, Bandung", -6.9460, 107.6350, "flood", 3, 11),
+    ("Ujungberung, Bandung", -6.9150, 107.7060, "landslide", 3, 2),
+    ("Lembang, Bandung Barat", -6.8120, 107.6180, "landslide", 3, 0),
+    ("Dayeuhkolot, Kabupaten Bandung", -6.9830, 107.6280, "flood", 5, 14),
+    ("Baleendah, Kabupaten Bandung", -7.0010, 107.6270, "flood", 3, 5),
+    ("Kampung Melayu, Jakarta Timur", -6.2260, 106.8630, "flood", 4, 9),
+    ("Kemang, Jakarta Selatan", -6.2650, 106.8100, "flood", 3, 3),
+    ("Penjaringan, Jakarta Utara", -6.1250, 106.7900, "flood", 3, 0),
+    ("Bekasi Utara", -6.2000, 106.9900, "flood", 4, 6),
+    ("Bogor Selatan", -6.6200, 106.8000, "landslide", 4, 4),
+    ("Tangerang Kota", -6.1780, 106.6300, "fire", 3, 0),
+    ("Semarang Utara", -6.9570, 110.4200, "flood", 4, 12),
+    ("Banjarnegara, Jawa Tengah", -7.4000, 109.6900, "landslide", 3, 8),
+    ("Sleman, DI Yogyakarta", -7.7326, 110.4204, "landslide", 3, 0),
+    ("Surabaya Timur", -7.2800, 112.7800, "flood", 3, 2),
+    ("Malang Kota", -7.9800, 112.6300, "fire", 2, 0),
+    ("Banda Aceh", 5.5483, 95.3238, "flood", 2, 0),
+    ("Medan Deli", 3.6800, 98.7000, "flood", 3, 3),
+    ("Padang Barat", -0.9500, 100.3500, "landslide", 3, 5),
+    ("Pekanbaru", 0.5070, 101.4478, "fire", 4, 10),
+    ("Jambi Kota", -1.6101, 103.6131, "fire", 3, 6),
+    ("Palembang Ilir", -2.9760, 104.7750, "fire", 3, 12),
+    ("Bandar Lampung", -5.4290, 105.2610, "flood", 2, 0),
+    ("Pontianak Kota", -0.0263, 109.3425, "fire", 3, 9),
+    ("Palangka Raya", -2.2100, 113.9200, "fire", 4, 14),
+    ("Banjarmasin Timur", -3.3194, 114.5908, "fire", 3, 4),
+    ("Samarinda Ulu", -0.5022, 117.1536, "flood", 3, 0),
+    ("Makassar Panakkukang", -5.1477, 119.4327, "flood", 3, 6),
+    ("Manado", 1.4748, 124.8421, "landslide", 3, 7),
+    ("Palu Barat", -0.9000, 119.8600, "flood", 2, 0),
+    ("Jayapura", -2.5330, 140.7181, "flood", 2, 3),
+    ("Kupang", -10.1772, 123.6070, "fire", 2, 0),
+    ("Mataram", -8.5833, 116.1167, "landslide", 2, 0),
+    ("Denpasar", -8.6500, 115.2167, "flood", 2, 0),
+    ("Ambon", -3.6954, 128.1814, "landslide", 2, 0),
+]
+
+
+def build_showcase_rows(now: datetime | None = None, seed: int = 2026) -> list[dict]:
+    """Titik simulasi untuk demo peta: aktif, diterima, tanpa hasil AI atau foto palsu.
+
+    Semua baris berlabel DEMO dan is_demo=true; hanya tampil bila DEMO_SHOWCASE=true.
+    """
+    now = now or datetime.now(timezone.utc)
+    rng = random.Random(seed)
+    max_hours = min(9.0, settings.report_active_ttl_hours - 1)
+    rows = []
+    for name, lat, lng, dominant, scatter, hot in _SEBARAN:
+        points = [(lat + rng.uniform(-0.0002, 0.0002), lng + rng.uniform(-0.0002, 0.0002), dominant) for _ in range(hot)]
+        for _ in range(scatter):
+            angle, radius = rng.uniform(0, 2 * math.pi), rng.uniform(0.004, 0.02)
+            kind = dominant if rng.random() < 0.7 else rng.choice(("flood", "landslide", "fire"))
+            points.append((lat + radius * math.sin(angle), lng + radius * math.cos(angle), kind))
+        for plat, plng, kind in points:
+            index = len(rows) + 1
+            observed = now - timedelta(hours=rng.uniform(0.5, max_hours))
+            published = observed + timedelta(minutes=5)
+            rows.append({
+                "id": str(uuid5(NAMESPACE_URL, f"gema-showcase/{index}")),
+                "status": "active", "type": kind, "reported_type": kind, "severity": None,
+                "ai_status": "not_requested", "ai_summary": None, "ai_reason": None,
+                "description": None, "details_json": {"type": kind},
+                "lat": round(plat, 6), "lng": round(plng, 6),
+                "location_source": "demo", "location_label": f"Sekitar {name}",
+                "published_at": published.isoformat(), "observed_at": observed.isoformat(),
+                "observation_time_known": True,
+                "expires_at": (observed + timedelta(hours=settings.report_active_ttl_hours)).isoformat(),
+                "verification_status": "unconfirmed", "closure_reason": None,
+                "photo_path": None, "photo_source": "none", "risk_flags": ["demo_fixture"],
+                "author_id": _fake_author(1000 + index), "is_demo": True,
+                "responder_status": "ACCEPTED", "accepted_at": published.isoformat(), "accepted_by": "Simulasi demo",
+            })
+    return rows
+
+
 def main() -> None:
     if not settings.demo_mode:
         raise SystemExit("Seed ditolak: gunakan database demo terpisah dengan DEMO_MODE=true.")
@@ -288,10 +373,18 @@ def main() -> None:
     client.table("reports").delete().eq("is_demo", True).execute()
     print("laporan DEMO lama dihapus")
 
-    rows = build_demo_rows()
-    client.table("reports").insert(rows).execute()
+    showcase = build_showcase_rows() if "--showcase" in sys.argv else []
+    rows = [] if showcase else build_demo_rows()
+    # Dua kelompok punya kolom berbeda; PostgREST mengisi kolom yang absen dengan null, jadi tidak dicampur.
+    for group in (rows, showcase):
+        for start in range(0, len(group), 100):
+            client.table("reports").insert(group[start:start + 100]).execute()
 
-    print(f"masuk: {len(rows)} fixture DEMO; tidak terlihat di feed/nearby/density/chat publik")
+    print(f"masuk: {len(rows)} fixture DEMO privat dan {len(showcase)} titik simulasi")
+    if showcase:
+        print("titik simulasi tampil di peta hanya bila backend dijalankan dengan DEMO_SHOWCASE=true")
+    else:
+        print("fixture tidak terlihat di feed/nearby/density/chat publik")
     print("UUID fixture bukan token login. Gunakan Auth nyata dan alur laporan di staging untuk demo UI.")
 
 

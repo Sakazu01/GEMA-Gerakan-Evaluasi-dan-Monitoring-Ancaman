@@ -50,10 +50,10 @@ Jalankan dari directory yang disebutkan; semua command mengikuti RTK workspace. 
 Dari `backend/`:
 
 ```powershell
-rtk proxy .venv/Scripts/python.exe test_rules.py
-rtk proxy .venv/Scripts/python.exe test_analyze.py
-rtk proxy .venv/Scripts/python.exe test_telegram.py
-rtk proxy .venv/Scripts/python.exe -m unittest test_chat
+rtk proxy .venv/Scripts/python.exe tests/unit/test_rules.py
+rtk proxy .venv/Scripts/python.exe tests/unit/test_analyze.py
+rtk proxy .venv/Scripts/python.exe tests/unit/test_telegram.py
+rtk proxy .venv/Scripts/python.exe -m unittest tests.unit.test_chat
 ```
 
 Dari `frontend/`:

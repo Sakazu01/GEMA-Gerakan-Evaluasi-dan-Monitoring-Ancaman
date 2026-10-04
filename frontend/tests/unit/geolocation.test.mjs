@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { requestDeviceLocation } from "../src/lib/geolocation.ts";
+import { requestDeviceLocation } from "../../src/lib/geolocation.ts";
 
 test("koordinat dan akurasi perangkat diteruskan tanpa diganti lokasi demo", () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "navigator");

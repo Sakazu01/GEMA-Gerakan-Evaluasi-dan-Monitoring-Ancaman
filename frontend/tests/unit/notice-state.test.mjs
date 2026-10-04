@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {noticeFingerprint,dismissNotice,readNoticeDismissals} from "../src/lib/notice-state.ts";
+import {noticeFingerprint,dismissNotice,readNoticeDismissals} from "../../src/lib/notice-state.ts";
 
 test("count tidak menghasilkan notice baru; keputusan dan waktu pengamatan menghasilkan notice baru",()=>{
   const report={id:"test",status:"active",verification_status:"unconfirmed",observed_at:"2026-10-03T12:00:00Z",expires_at:"2026-10-04T00:00:00Z"};

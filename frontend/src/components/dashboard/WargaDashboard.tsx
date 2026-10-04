@@ -34,6 +34,7 @@ export function WargaDashboard({location,locationMessage,onLocationChange}:{loca
   return <div className="min-h-dvh bg-[var(--background)]">
     <AppHeader open={drawer} onMenuClick={()=>setDrawer(true)}/>
     <main className="mx-auto max-w-7xl space-y-6 p-4 pb-24 md:p-6">
+      <Link className="gema-link" href="/">Kembali ke peta</Link>
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Kejadian di sekitar Anda</h1><p className="mt-2 gema-muted">Peta menampilkan laporan yang telah diterima petugas. Notifikasi sekitar dapat meminta bantuan verifikasi lebih awal.</p></div><Link href="/report/new" className="gema-button">Laporkan Bencana</Link></div>
       <section aria-label="Area pemantauan" className="gema-card space-y-3">
         <h2 className="gema-card-title">Area dipantau: {location?.label||"belum dipilih"}</h2>
@@ -58,7 +59,7 @@ export function WargaDashboard({location,locationMessage,onLocationChange}:{loca
       <section aria-label="Daftar laporan" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map(report=><ReportCard key={report.id} report={report}/>)}</section>
       {hasMore&&<button className="gema-button-secondary" disabled={loading} onClick={()=>void loadMore()}>Muat laporan berikutnya</button>}
       <PushPreferences location={location}/>
-      <nav aria-label="Bantuan dan riwayat" className="flex flex-wrap gap-4"><Link className="gema-link" href="/evakuasi">Panduan</Link><Link className="gema-link" href="/hotline">Kontak</Link><Link className="gema-link" href="/track">Laporan saya</Link><Link className="gema-link" href="/pengelola">Riwayat pemerintah</Link></nav>
+      <nav aria-label="Bantuan dan riwayat" className="flex flex-wrap gap-4"><Link className="gema-link" href="/evakuasi">Panduan</Link><Link className="gema-link" href="/hotline">Kontak</Link><Link className="gema-link" href="/track">Laporan saya</Link></nav>
     </main>
     <NavDrawer open={drawer} onClose={()=>setDrawer(false)}/>
   </div>;

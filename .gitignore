@@ -37,8 +37,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# scratch testing (foto uji + hasil AI sekali pakai, bukan test suite permanen)
-backend/test/
+# foto uji tidak ikut repo (hak cipta pemilik foto); kunci jawaban dan hasil evaluasi tetap ikut
+backend/tests/fixtures/foto/*
+!backend/tests/fixtures/foto/README.md
+# catatan keluaran model versi lama (sekali pakai)
+backend/tests/output/test*.txt
 
 # env files (each project loads its own; never commit real values)
 .env

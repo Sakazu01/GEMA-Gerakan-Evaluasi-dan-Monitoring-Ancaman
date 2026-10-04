@@ -1,6 +1,6 @@
 # Spesifikasi UI GEMA
 
-Status: acuan desain alur yang telah diterapkan pada fitur inti. Bukti dan batas cakupan: [hasil implementasi](docs/fik-fair/hasil-implementasi.md). Acuan visual: [design system](docs/fik-fair/design-system.md). Arti status: [data dan API](docs/fik-fair/data-dan-api.md).
+Status: acuan desain alur yang telah diterapkan pada fitur inti. Bukti dan batas cakupan: [hasil implementasi](../fik-fair/hasil-implementasi.md). Acuan visual: [design system](../fik-fair/design-system.md). Arti status: [data dan API](../fik-fair/data-dan-api.md).
 
 ## Navigasi
 

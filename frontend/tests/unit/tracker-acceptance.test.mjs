@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasNewAcceptance } from "../src/lib/tracker-acceptance.ts";
+import { hasNewAcceptance } from "../../src/lib/tracker-acceptance.ts";
 
 const pending = { id: "report-1", responder_status: "PENDING" };
 const accepted = { id: "report-1", responder_status: "ACCEPTED" };

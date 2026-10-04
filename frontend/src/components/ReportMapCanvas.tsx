@@ -10,6 +10,7 @@ import {
   mapStyle,
   awarenessRadius,
   evidenceLabel,
+  severityMap,
   severityStatusLabel,
   timeAgoLabel,
   type MapLocation,
@@ -206,16 +207,17 @@ const ReportMapCanvas = forwardRef<ReportMapHandle, {
     const active = reports.filter((report) => report.status === "active");
     if (mode === "density") {
       if (densityPoints) {
-        // Count uses one neutral palette and never labels regions without reports as safe.
+        // Warna mengikuti jumlah pelapor (angka tetap tertulis), bukan tingkat bahaya; wilayah tanpa laporan tidak pernah disebut aman.
         for (const point of densityPoints) {
-          const color = "#1D4ED8";
+          const level = point.count >= 10 ? severityMap.kritis : point.count >= 3 ? severityMap.tinggi : severityMap.sedang;
+          const color = level.color;
           const size = Math.min(100, 44 + Math.round(9 * Math.sqrt(point.count - 1)));
           const badge = document.createElement("span");
           badge.textContent = String(point.count);
           badge.setAttribute("aria-hidden", "true");
           badge.style.cssText = "display:flex;align-items:center;justify-content:center;border-radius:50%;font-weight:800;border:2px solid white;width:"
             + size + "px;height:" + size + "px;background:" + color + ";color:"
-            + "#FFFFFF" + ";box-shadow:0 0 "
+            + level.textColor + ";box-shadow:0 0 "
             + Math.round(size / 2) + "px " + Math.round(size / 4) + "px " + color + "66";
           const label = point.count + " pelapor dalam radius 50 meter. Laporan warga belum diverifikasi.";
           const popup = document.createElement("p");

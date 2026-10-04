@@ -49,8 +49,9 @@ export default function HotlinePage() {
 
       <main className="mx-auto max-w-3xl px-4 pb-28 pt-6">
         <Link href="/" className="inline-flex min-h-11 items-center gap-1 font-bold text-[#0D5D3A]">
-          <ChevronLeft aria-hidden="true" size={22} /> Hotline
+          <ChevronLeft aria-hidden="true" size={22} /> Beranda
         </Link>
+        <h1 className="mt-2 text-2xl font-bold text-slate-950">Hotline darurat</h1>
         <p className="mt-2 text-sm text-slate-700">
           Nomor darurat resmi untuk meminta bantuan sesuai kebutuhan. Ketersediaan layanan 112 bergantung pada daerah.
         </p>

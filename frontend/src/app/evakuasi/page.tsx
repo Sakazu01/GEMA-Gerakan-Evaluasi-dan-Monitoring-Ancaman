@@ -33,8 +33,9 @@ export default function EvakuasiPage() {
 
       <main className="mx-auto max-w-3xl px-4 pb-28 pt-6">
         <Link href="/" className="inline-flex min-h-11 items-center gap-1 font-bold text-[#0D5D3A]">
-          <ChevronLeft aria-hidden="true" size={22} /> Panduan Evakuasi
+          <ChevronLeft aria-hidden="true" size={22} /> Beranda
         </Link>
+        <h1 className="mt-2 text-2xl font-bold text-slate-950">Panduan evakuasi</h1>
 
         <Card className="mt-3 border-slate-200">
           {!selectedReport || !nearest ? (
@@ -65,7 +66,7 @@ export default function EvakuasiPage() {
                   <span className="text-slate-600">sekitar {(nearest.distance_m / 1000).toFixed(1)} km dari lokasi laporan</span>
                 </p>
               </div>
-              <p className="mt-2 text-xs text-slate-500">*Titik kumpul contoh untuk demo, bukan data resmi BPBD/pemda setempat.</p>
+              <p className="mt-2 text-sm text-slate-600">*Titik kumpul contoh untuk demo, bukan data resmi BPBD/pemda setempat.</p>
             </div>
           )}
         </Card>
@@ -134,13 +135,13 @@ export default function EvakuasiPage() {
             <p className="mt-1 text-sm text-slate-700">Laporkan kehadiran Anda kepada petugas posko dan ikuti informasi resmi. GEMA tidak mencatat kehadiran atau mengirim permintaan bantuan.</p>
           </Card>
         </section>
-        <p className="mt-4 text-xs text-slate-600">
+        <p className="mt-4 text-sm text-slate-700">
           Panduan umum mengacu pada{" "}
           <a
             href="https://bnpb.go.id/storage/app/media/Buku%20BNPB/Buku%20Saku%20Bencana%20BNPB.pdf"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold underline"
+            className="inline-flex min-h-11 items-center font-semibold underline"
           >
             Buku Saku Bencana BNPB
           </a>

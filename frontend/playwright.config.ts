@@ -1,7 +1,7 @@
 import {defineConfig,devices} from "@playwright/test";
 
 export default defineConfig({
-  testDir:"./tests/browser",
+  testDir:"./tests/e2e",
   timeout:30000,
   fullyParallel:true,
   workers:2,

@@ -60,8 +60,11 @@ def _to_public(row: dict[str, Any]) -> ReportOut:
 
 
 def public_active_query(columns: str = _SELECT):
-    return (get_client().table("reports").select(columns).eq("status", "active")
-        .eq("responder_status", "ACCEPTED").eq("is_demo", False).gt("expires_at", utcnow().isoformat()))
+    query = get_client().table("reports").select(columns).eq("status", "active").gt("expires_at", utcnow().isoformat())
+    if settings.demo_showcase:
+        # Data simulasi berlabel "DEMO" ikut tampil hanya bila showcase dinyalakan eksplisit.
+        return query.or_("and(is_demo.eq.false,responder_status.eq.ACCEPTED),is_demo.eq.true")
+    return query.eq("responder_status", "ACCEPTED").eq("is_demo", False)
 
 
 def list_active(limit: int, cursor: str | None = None, cursor_id: str | None = None) -> list[ReportOut]:
@@ -129,9 +132,9 @@ def get_row(report_id: str, author_id: str | None = None) -> dict[str, Any] | No
 def get_active(report_id: str) -> ReportOut | None:
     row = get_row(report_id)
     # Closed reports expose a safe correction/closure, but never their original raw photo.
-    if not row or row.get("is_demo") or row["status"] not in ("active","closed"):
+    if not row or (row.get("is_demo") and not settings.demo_showcase) or row["status"] not in ("active","closed"):
         return None
-    if row["status"] == "active" and not active_public(row,utcnow()):
+    if row["status"] == "active" and not active_public({**row,"is_demo":False},utcnow()):
         row = {**row,"status":"closed","closure_reason":"expired"}
     return _to_public(row)
 

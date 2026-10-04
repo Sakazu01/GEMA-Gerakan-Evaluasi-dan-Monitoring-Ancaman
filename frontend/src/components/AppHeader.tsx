@@ -21,7 +21,7 @@ export function AppHeader({
         </Link>
         <span aria-hidden="true" className="h-6 w-px shrink-0 bg-white/25" />
         <div className="min-w-0 flex-1">
-          {center ?? <p className="truncate text-xs text-white/85">Bergerak, Melihat, Bergema</p>}
+          {center ?? <p className="text-sm leading-tight text-white">Bergerak, Melihat, Bergema</p>}
         </div>
         <button
           type="button"

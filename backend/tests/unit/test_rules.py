@@ -1,7 +1,11 @@
-"""Cek kecil untuk aturan yang gampang salah. Jalankan: cd backend && python test_rules.py"""
+"""Cek kecil untuk aturan yang gampang salah. Jalankan dari folder backend: python -m tests.unit.test_rules"""
 
-from app.schemas.report import HelpStatus
-from app.services.rules import help_status_from_counts
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from app.schemas.report import HelpStatus  # noqa: E402
+from app.services.rules import help_status_from_counts  # noqa: E402
 
 
 def test_help_status_from_counts():

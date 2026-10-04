@@ -1,6 +1,6 @@
 # Hasil implementasi GEMA untuk FIK FAIR
 
-Tanggal: **3 Oktober 2026**. Perubahan berada di working tree, mempertahankan perubahan pengguna yang sudah ada. Tidak dilakukan commit, deployment, migrasi Supabase live, atau pengiriman pesan nyata. Spesifikasi tetap pada [implementation.md](../../implementation.md), [ui.md](../../ui.md), dan paket FIK FAIR; petunjuk aktivasi pada [operasional.md](operasional.md).
+Tanggal: **3 Oktober 2026**. Perubahan berada di working tree, mempertahankan perubahan pengguna yang sudah ada. Tidak dilakukan commit, deployment, migrasi Supabase live, atau pengiriman pesan nyata. Spesifikasi tetap pada [implementation.md](../perencanaan/implementation.md), [ui.md](../perencanaan/ui.md), dan paket FIK FAIR; petunjuk aktivasi pada [operasional.md](operasional.md).
 
 ## Perilaku yang berubah
 
@@ -92,9 +92,9 @@ Dari root repo:
 
 ```powershell
 rtk proxy backend/.venv/Scripts/python.exe -m unittest discover -s backend -p test_*.py
-rtk proxy backend/.venv/Scripts/python.exe backend/test_rules.py
-rtk proxy backend/.venv/Scripts/python.exe backend/test_analyze.py
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File backend/tests/run-postgres.ps1
+rtk proxy backend/.venv/Scripts/python.exe backend/tests/unit/test_rules.py
+rtk proxy backend/.venv/Scripts/python.exe backend/tests/unit/test_analyze.py
+rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File backend/tests/sql/run-postgres.ps1
 ```
 
 Runner PostgreSQL Windows membuat cluster baru di `tmp/`, hanya bind `127.0.0.1`, memakai port 55433, menjalankan seluruh migrasi/fixture/test, lalu menghentikan cluster. Tidak memakai database existing. Parameter `-PostgresBin`/`-TestPort` tersedia. ExecutionPolicy Bypass hanya untuk proses test tersebut, tidak mengubah policy komputer. Folder/log dibiarkan ignored untuk diagnosis.

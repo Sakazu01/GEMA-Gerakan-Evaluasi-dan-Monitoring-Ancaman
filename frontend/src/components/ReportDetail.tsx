@@ -57,7 +57,7 @@ export function ReportDetail({id}:{id:string}) {
   return <main className="mx-auto max-w-3xl space-y-5 p-4 pb-24">
     <Link className="gema-link" href={own?"/track":"/"}>Kembali</Link>
     <DataStatePanel loading={loading} error={error} updatedAt={updatedAt} retry={()=>void load()}/>
-    {report?.id===id&&<><section className="gema-card space-y-3"><EvidenceBadge report={report}/>{report.is_demo&&<p className="font-bold">Data simulasi</p>}<h1 className="text-2xl font-bold">{disasterNames[report.type]} — {report.location_label}</h1>
+    {report?.id===id&&<><section className="gema-card space-y-3"><EvidenceBadge report={report}/><h1 className="text-2xl font-bold">{disasterNames[report.type]} — {report.location_label}</h1>
       <p>{report.observed_at?`Diamati ${new Date(report.observed_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"})} WIB`:"Waktu pengamatan tidak diketahui"}</p>
       <p>{report.ai_summary||"Laporan warga; hasil analisis visual belum tersedia."}</p>
       {report.ai_confidence&&<p className="text-sm">Keyakinan visual: {report.ai_confidence}{report.ai_limitations?` · ${report.ai_limitations}`:""}</p>}

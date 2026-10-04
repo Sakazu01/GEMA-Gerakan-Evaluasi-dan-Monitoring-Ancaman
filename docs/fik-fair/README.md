@@ -9,11 +9,11 @@ Paket ini mengubah hasil review proposal dan kode menjadi keputusan produk, spes
 | Dokumen | Isi |
 | --- | --- |
 | [Tema dan scope](tema-dan-scope.md) | Posisi GEMA dalam IGNITE, kasus utama, pengguna, MVP, dan bukti penilaian |
-| [Revisi](../../revisi.md) | Daftar masalah kode dan solusi, serta perubahan proposal |
-| [Implementation](../../implementation.md) | Tahapan pengerjaan, dependensi, titik perubahan kode, dan kriteria selesai |
+| [Revisi](../perencanaan/revisi.md) | Daftar masalah kode dan solusi, serta perubahan proposal |
+| [Implementation](../perencanaan/implementation.md) | Tahapan pengerjaan, dependensi, titik perubahan kode, dan kriteria selesai |
 | [Kepercayaan dan notifikasi](kepercayaan-dan-notifikasi.md) | Foto lama, spam, konfirmasi warga, moderasi, radius, dan privasi |
 | [Data dan API](data-dan-api.md) | Kontrak status, skema, endpoint, otorisasi, dan migrasi yang diusulkan |
-| [UI](../../ui.md) | Alur warga dan moderator, layar, teks, serta keadaan gagal |
+| [UI](../perencanaan/ui.md) | Alur warga dan moderator, layar, teks, serta keadaan gagal |
 | [Design system](design-system.md) | Warna, tipografi, komponen, aksesibilitas, dan aturan tampilan |
 | [Pengujian](pengujian.md) | Skenario penerimaan, pengujian pengguna, metrik, dan batas klaim |
 | [Submission](submission.md) | Materi lomba, bukti, demo, dan konfirmasi aturan penggunaan ulang |

@@ -1,8 +1,8 @@
 # Revisi GEMA: masalah, solusi, dan proposal
 
-Status: daftar masalah ini adalah baseline review sebelum perubahan. Implementasi solusi tersedia di workspace; lihat [pemetaan FIX dan bukti test](docs/fik-fair/hasil-implementasi.md). Aktivasi layanan/pilot masih membutuhkan konfigurasi dan uji staging.
+Status: daftar masalah ini adalah baseline review sebelum perubahan. Implementasi solusi tersedia di workspace; lihat [pemetaan FIX dan bukti test](../fik-fair/hasil-implementasi.md). Aktivasi layanan/pilot masih membutuhkan konfigurasi dan uji staging.
 
-Dokumen terkait: [implementasi](implementation.md), [UI](ui.md), [tema](docs/fik-fair/tema-dan-scope.md), [kontrak data](docs/fik-fair/data-dan-api.md).
+Dokumen terkait: [implementasi](implementation.md), [UI](ui.md), [tema](../fik-fair/tema-dan-scope.md), [kontrak data](../fik-fair/data-dan-api.md).
 
 P0 = fondasi sebelum pilot publik; P1 = kelengkapan dan keandalan setelah fondasi; P2 = pengembangan lanjutan. ID berikut dipakai dalam rencana implementasi dan pengujian.
 
@@ -65,4 +65,4 @@ Tidak semua masalah memerlukan arsitektur baru. Pertahankan Next.js, FastAPI, Su
 
 ## Batas hasil review
 
-Kode dan test lokal sudah direview, tetapi tidak ada benchmark akurasi model, observasi dispatch lapangan, atau audit deployment menyeluruh. Baseline hasil test dicatat di [pengujian.md](docs/fik-fair/pengujian.md). Dokumen ini tidak memperbaiki failure test atau vulnerability dengan sendirinya.
+Kode dan test lokal sudah direview, tetapi tidak ada benchmark akurasi model, observasi dispatch lapangan, atau audit deployment menyeluruh. Baseline hasil test dicatat di [pengujian.md](../fik-fair/pengujian.md). Dokumen ini tidak memperbaiki failure test atau vulnerability dengan sendirinya.

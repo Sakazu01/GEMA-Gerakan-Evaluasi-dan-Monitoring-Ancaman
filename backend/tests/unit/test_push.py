@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from app.core.config import settings
 from app.services import push
-from test_community import NOW,row,REPORT
+from tests.unit.test_community import NOW,row,REPORT
 
 
 class Query:

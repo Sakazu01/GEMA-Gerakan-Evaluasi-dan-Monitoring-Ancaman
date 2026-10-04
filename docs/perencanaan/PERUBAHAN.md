@@ -91,13 +91,13 @@ Setiap section pada Tabel 4.2 proposal (Komponen, Fungsi, Pengguna) dibahas satu
 
 Dua fitur berikut **tidak ada di proposal manapun** dan ditambahkan setelah proposal diajukan:
 
-1. **Chatbot GEMA AI** — tanya-jawab berbasis laporan aktif publik non-demo. Model hanya menafsirkan maksud pertanyaan; jumlah, daftar, dan ringkasan jawaban selalu disusun dari data Supabase yang sebenarnya (bukan dikarang model). Lihat bagian [Chatbot GEMA AI](./README.md#chatbot-gema-ai) di README.
+1. **Chatbot GEMA AI** — tanya-jawab berbasis laporan aktif publik non-demo. Model hanya menafsirkan maksud pertanyaan; jumlah, daftar, dan ringkasan jawaban selalu disusun dari data Supabase yang sebenarnya (bukan dikarang model). Lihat bagian [Chatbot GEMA AI](../../README.md#chatbot-gema-ai) di README.
 2. **Mode Kepadatan Laporan** pada peta — dimensi analisis baru berdasarkan *jumlah pelapor unik* dalam radius 50 m (bukan cuma tingkat keparahan AI seperti proposal). Ini melengkapi peta severity yang sudah ada, bukan menggantikannya.
 
 ## Target terukur proposal — status
 
 Proposal (§3) menetapkan empat target: foto tampil di peta < 10 detik, inferensi AI < 5 detik, akurasi klasifikasi ≥ 80%, dan eskalasi/peringatan terkirim < 60 detik tanpa tindakan manual.
 
-- **Akurasi klasifikasi:** Spot-check kecil (n=3 foto, lihat [Evaluasi model AI](./README.md#evaluasi-model-ai) di README) menunjukkan 3/3 benar. Ini **konsisten** dengan target ≥80%, tapi n=3 terlalu kecil untuk jadi bukti statistik yang valid atas klaim tersebut.
+- **Akurasi klasifikasi:** Spot-check kecil (n=3 foto, lihat [Evaluasi model AI](../../README.md#evaluasi-model-ai) di README) menunjukkan 3/3 benar. Ini **konsisten** dengan target ≥80%, tapi n=3 terlalu kecil untuk jadi bukti statistik yang valid atas klaim tersebut.
 - **Waktu tampil di peta / waktu inferensi:** Tidak diukur secara formal (tidak ada logging latency terstruktur); secara kualitatif terasa cepat (hitungan detik) saat pengujian manual, tapi tidak ada angka yang bisa dipertanggungjawabkan di sini.
 - **Eskalasi/peringatan < 60 detik tanpa tindakan manual:** Notifikasi Telegram ke grup responder terkirim otomatis segera setelah laporan diterbitkan (tanpa tindakan manual), jadi bagian ini tercapai — tapi hanya untuk satu grup Telegram tetap, bukan eskalasi geotargeted ke instansi yang berbeda-beda sesuai lokasi/jenis bencana seperti tersirat proposal.

@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-import seed_demo
+from scripts import seed_demo
 from app.services.trust import active_public
 
 
@@ -26,6 +26,21 @@ class DemoSeedTests(unittest.TestCase):
             self.assertEqual(row["closure_reason"], "expired" if row["status"] == "closed" else None)
             if row["status"] == "active":
                 self.assertGreater(datetime.fromisoformat(row["expires_at"]), now)
+
+    def test_showcase_rows_are_active_accepted_with_no_fake_ai_or_photo(self):
+        now = datetime(2026, 10, 4, 12, 0).astimezone()
+        with patch.object(seed_demo.settings, "report_active_ttl_hours", 12):
+            rows = seed_demo.build_showcase_rows(now)
+        self.assertGreaterEqual(len(rows), 150)
+        self.assertEqual(len({row["id"] for row in rows}), len(rows))
+        for row in rows:
+            self.assertTrue(row["is_demo"])
+            self.assertEqual((row["status"], row["responder_status"]), ("active", "ACCEPTED"))
+            self.assertGreater(datetime.fromisoformat(row["expires_at"]), now)
+            self.assertIsNone(row["photo_path"])
+            self.assertIsNone(row["severity"])
+            self.assertIsNone(row["ai_summary"])
+            self.assertEqual(row["ai_status"], "not_requested")
 
     def test_seed_requires_explicit_demo_mode_before_any_database_action(self):
         with patch.object(seed_demo.settings, "demo_mode", False), patch.object(seed_demo, "get_client") as get_client:

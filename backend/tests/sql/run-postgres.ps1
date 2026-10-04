@@ -3,7 +3,7 @@ param(
   [ValidateRange(1024,65535)][int]$TestPort = 55433
 )
 $ErrorActionPreference = 'Stop'
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $pgData = Join-Path $repoRoot ('tmp\community-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-ffff'))
 $pgLog = Join-Path $pgData 'server.log'
 $clusterStarted = $false
@@ -31,18 +31,18 @@ try {
   if ($starter.ExitCode -ne 0) { throw 'Local test cluster could not start' }
   $clusterStarted = $true
   Invoke-TestCommand -Arguments @((Join-Path $PostgresBin 'createdb.exe'),'-h','127.0.0.1','-p',"$TestPort",'-U','gema_test','gema_test_db')
-  Invoke-TestSql 'backend/tests/local_roles.sql' 'postgres'
+  Invoke-TestSql 'backend/tests/sql/local_roles.sql' 'postgres'
   foreach ($migration in Get-ChildItem -LiteralPath (Join-Path $repoRoot 'backend/migrations') -Filter '*.sql' | Sort-Object Name) {
-    if ($migration.Name.StartsWith('009_')) { Invoke-TestSql 'backend/tests/storage_before_009.sql' }
-    if ($migration.Name.StartsWith('010_')) { Invoke-TestSql 'backend/tests/retention_before_010.sql' }
+    if ($migration.Name.StartsWith('009_')) { Invoke-TestSql 'backend/tests/sql/storage_before_009.sql' }
+    if ($migration.Name.StartsWith('010_')) { Invoke-TestSql 'backend/tests/sql/retention_before_010.sql' }
     Invoke-TestSql ('backend/migrations/' + $migration.Name)
-    if ($migration.Name.StartsWith('004_')) { Invoke-TestSql 'backend/tests/legacy_before_005.sql' }
-    if ($migration.Name.StartsWith('005_')) { Invoke-TestSql 'backend/tests/legacy_after_005.sql' }
-    if ($migration.Name.StartsWith('009_')) { Invoke-TestSql 'backend/tests/storage_after_009.sql' }
+    if ($migration.Name.StartsWith('004_')) { Invoke-TestSql 'backend/tests/sql/legacy_before_005.sql' }
+    if ($migration.Name.StartsWith('005_')) { Invoke-TestSql 'backend/tests/sql/legacy_after_005.sql' }
+    if ($migration.Name.StartsWith('009_')) { Invoke-TestSql 'backend/tests/sql/storage_after_009.sql' }
   }
-  Invoke-TestSql 'backend/tests/community_transactions.sql'
-  Invoke-TestSql 'backend/tests/closure_retention.sql'
-  Invoke-TestCommand -Arguments @((Join-Path $repoRoot 'backend/.venv/Scripts/python.exe'),'backend/tests/postgres_concurrency.py','--psql',(Join-Path $PostgresBin 'psql.exe'),'--database','gema_test_db','--port',"$TestPort")
+  Invoke-TestSql 'backend/tests/sql/community_transactions.sql'
+  Invoke-TestSql 'backend/tests/sql/closure_retention.sql'
+  Invoke-TestCommand -Arguments @((Join-Path $repoRoot 'backend/.venv/Scripts/python.exe'),'backend/tests/sql/postgres_concurrency.py','--psql',(Join-Path $PostgresBin 'psql.exe'),'--database','gema_test_db','--port',"$TestPort")
   Write-Output 'PASS: fresh migrations, legacy, private bucket contract, transactions, and concurrency'
 }
 finally {

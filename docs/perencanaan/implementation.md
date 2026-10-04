@@ -1,8 +1,8 @@
 # Rencana implementasi GEMA untuk FIK FAIR 2026
 
-Status: tahap A–D telah diimplementasikan di workspace pada 3 Oktober 2026; push opsional dan sinyal kemiripan juga tersedia. Aktivasi layanan serta sisa roadmap dijelaskan pada [hasil implementasi](docs/fik-fair/hasil-implementasi.md) dan [operasional](docs/fik-fair/operasional.md). Dokumen ini tetap menyimpan urutan dan kriteria desain sebagai acuan.
+Status: tahap A–D telah diimplementasikan di workspace pada 3 Oktober 2026; push opsional dan sinyal kemiripan juga tersedia. Aktivasi layanan serta sisa roadmap dijelaskan pada [hasil implementasi](../fik-fair/hasil-implementasi.md) dan [operasional](../fik-fair/operasional.md). Dokumen ini tetap menyimpan urutan dan kriteria desain sebagai acuan.
 
-Mulai dari [masalah dan solusi](revisi.md). Kontrak otoritatif: [data/API](docs/fik-fair/data-dan-api.md), [kebijakan bukti](docs/fik-fair/kepercayaan-dan-notifikasi.md), [UI](ui.md), dan [design system](docs/fik-fair/design-system.md).
+Mulai dari [masalah dan solusi](revisi.md). Kontrak otoritatif: [data/API](../fik-fair/data-dan-api.md), [kebijakan bukti](../fik-fair/kepercayaan-dan-notifikasi.md), [UI](ui.md), dan [design system](../fik-fair/design-system.md).
 
 ## Prinsip pengerjaan
 
@@ -45,7 +45,7 @@ Urutan ini adalah urutan dependensi, bukan janji seluruh tahap selesai sebelum d
 4. Terapkan filter non-demo dan usia laporan yang sama pada feed, nearby, density, statistik, dan konteks chat. Riwayat tetap tersedia melalui jalur yang diberi label.
 5. Detail held melalui endpoint privat; halaman publik menampilkan status ketersediaan generik, bukan membuka alasan sensitif.
 
-Selesai jika T-03, T-04, T-08, T-10, dan T-12 pada [pengujian](docs/fik-fair/pengujian.md) lulus.
+Selesai jika T-03, T-04, T-08, T-10, dan T-12 pada [pengujian](../fik-fair/pengujian.md) lulus.
 
 ## B. Auth, spam, dan model bukti
 

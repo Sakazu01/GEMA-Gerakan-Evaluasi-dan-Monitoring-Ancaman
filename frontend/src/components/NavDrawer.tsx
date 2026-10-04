@@ -5,15 +5,15 @@ import { useDialog } from "@/components/ui/use-dialog";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, ChevronRight, Info, Map, Phone, TrendingUp, X, type LucideIcon } from "lucide-react";
+import { BookOpen, ChevronRight, Info, List, Map, Phone, TrendingUp, X, type LucideIcon } from "lucide-react";
 
 const items: { href: string; label: string; description?: string; icon: LucideIcon }[] = [
   { href: "/", label: "Peta Sebaran Bencana", icon: Map },
+  { href: "/ringkasan", label: "Ringkasan dan daftar", icon: List },
   { href: "/evakuasi", label: "Panduan Evakuasi", icon: BookOpen },
   { href: "/track", label: "Lacak Respons", icon: TrendingUp },
   { href: "/hotline", label: "Hotline Darurat", icon: Phone },
   { href: "/about", label: "Tentang GEMA", description: "Mengenal lebih dekat GEMA", icon: Info },
-  { href: "/pengelola", label: "Masuk pengelola", icon: Info },
 ];
 
 export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -47,7 +47,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
         <div className="flex items-start justify-between">
           <div>
             <Image src="/gema_green.svg" alt="GEMA" width={72} height={22} />
-            <p className="mt-1 text-xs text-slate-600">Bergerak, Melihat, Bergema</p>
+            <p className="mt-1 text-sm text-slate-600">Bergerak, Melihat, Bergema</p>
           </div>
           <button
             type="button"
@@ -78,7 +78,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{item.label}</span>
                     {item.description && (
-                      <span className="block truncate text-xs font-normal text-slate-500">{item.description}</span>
+                      <span className="block truncate text-sm font-normal text-slate-600">{item.description}</span>
                     )}
                   </span>
                   <ChevronRight aria-hidden="true" size={17} className={active ? "shrink-0 text-[#0D5D3A]" : "shrink-0 text-slate-400"} />
@@ -105,7 +105,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
             <path d="M0 100 Q60 90 150 99 T300 97 V110 H0 Z" opacity="0.25" />
           </svg>
           <p className="text-sm italic text-slate-600">&ldquo;Bergerak, Melihat, Bergema&rdquo;</p>
-          <p className="mt-1 text-xs text-slate-500">Untuk Indonesia yang lebih aman.</p>
+          <p className="mt-1 text-sm text-slate-600">Untuk Indonesia yang lebih aman.</p>
         </div>
       </nav>
     </>

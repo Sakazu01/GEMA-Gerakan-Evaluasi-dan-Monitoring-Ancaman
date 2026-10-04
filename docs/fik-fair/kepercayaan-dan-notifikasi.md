@@ -1,6 +1,6 @@
 # Kepercayaan laporan dan notifikasi radius
 
-Status 4 Oktober 2026: acuan kebijakan fitur yang diterapkan di branch `dev`. Layanan luar dan pilot belum diaktifkan. Kontrak field/status ada pada [data-dan-api.md](data-dan-api.md), bukti implementasi pada [hasil-implementasi.md](hasil-implementasi.md), dan keputusan produk lengkap pada [NOTULEN_EVALUASI.md](../../NOTULEN_EVALUASI.md).
+Status 4 Oktober 2026: acuan kebijakan fitur yang diterapkan di branch `dev`. Layanan luar dan pilot belum diaktifkan. Kontrak field/status ada pada [data-dan-api.md](data-dan-api.md), bukti implementasi pada [hasil-implementasi.md](hasil-implementasi.md), dan keputusan produk lengkap pada [NOTULEN_EVALUASI.md](../perencanaan/NOTULEN_EVALUASI.md).
 
 ## Prinsip keputusan
 

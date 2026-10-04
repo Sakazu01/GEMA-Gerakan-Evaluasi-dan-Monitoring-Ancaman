@@ -30,7 +30,7 @@ Karena acuan saat ini 3 Oktober dan deadline tercantum 4 Oktober, paket dokument
 
 | Keluaran | Isi minimum | Status awal |
 | --- | --- | --- |
-| Proposal | Masalah, kasus utama, solusi, user flow, teknologi, bukti uji, roadmap, referensi | Perlu revisi sesuai revisi.md |
+| Proposal | Masalah, kasus utama, solusi, user flow, teknologi, bukti uji, roadmap, referensi | Perlu revisi sesuai docs/perencanaan/revisi.md |
 | GitHub repository | README menjalankan aplikasi, domain demo, lisensi/dependensi, baseline dan kontribusi baru | Kode tersedia; verifikasi akses dan keselarasan README |
 | Video kreatif/demo ≤3 menit | Problem, alur fungsional, bukti singkat, batas dan roadmap | Belum dibuktikan selesai dalam review |
 | PowerPoint | Narasi konsisten, diagram terbaca, hasil uji, teknologi dan alasan | Selaraskan materi yang ada |
@@ -59,7 +59,7 @@ Belum semua persyaratan rinci dapat dipastikan dari dokumen yang dibaca. Setelah
 7. Bukti: hasil uji nyata, kinerja terukur, perubahan dari temuan.
 8. Roadmap dan keterbatasan; izin reuse dan kontribusi baru.
 
-Materi root `BUSINESS_PRESENTATION_GUIDE.md` dan `PITCH_SCRIPT_4M30.md` sudah ada sebelum paket ini dibuat. Script 4 menit 30 detik tidak otomatis sesuai batas video 3 menit; buat versi singkat tanpa mengubah fakta atau menyatakan fitur rencana sudah live.
+Materi `docs/pitch/BUSINESS_PRESENTATION_GUIDE.md` dan `docs/pitch/PITCH_SCRIPT_4M30.md` sudah ada sebelum paket ini dibuat. Script 4 menit 30 detik tidak otomatis sesuai batas video 3 menit; buat versi singkat tanpa mengubah fakta atau menyatakan fitur rencana sudah live.
 
 ## Storyboard video maksimal 3 menit
 

@@ -81,10 +81,21 @@ class ChatTests(unittest.TestCase):
         self.assertIn(REPORTS[0]["ai_summary"], result["answer"])
         self.assertNotIn("author_id", str(result))
 
+    def test_general_intent_returns_model_answer_without_sources_or_report_data(self):
+        query = chat.ChatQuery(intent="general", answer="Jauhi arus banjir dan ikuti arahan petugas.")
+        result = chat._render(query, REPORTS, NOW)
+        self.assertEqual(result["answer"], "Jauhi arus banjir dan ikuti arahan petugas.")
+        self.assertEqual(result["sources"], [])
+
+    def test_general_intent_without_answer_uses_safe_fallback(self):
+        result = chat._render(chat.ChatQuery(intent="general"), REPORTS, NOW)
+        self.assertIn("belum dapat menjawab", result["answer"])
+        self.assertEqual(result["sources"], [])
+
     def test_endpoint_reads_only_public_active_fields(self):
         table = ReadOnlyTable()
         client = SimpleNamespace(table=lambda name: table if name == "reports" else None)
-        with patch("app.services.reports.get_client", return_value=client), patch("app.services.reports.utcnow",return_value=NOW), patch.object(
+        with patch("app.services.reports.get_client", return_value=client), patch("app.services.reports.settings.demo_showcase", False), patch("app.services.reports.utcnow",return_value=NOW), patch.object(
             chat, "_interpret", return_value=chat.ChatQuery(intent="count", today=True)
         ), patch.object(chat, "utcnow", return_value=NOW), patch("app.api.chat.enforce_quota"), patch("app.api.chat.enforce_model_budget"):
             app.dependency_overrides[require_user] = lambda: "11111111-1111-4111-8111-111111111111"

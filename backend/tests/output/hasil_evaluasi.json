@@ -1,0 +1,41 @@
+{
+  "model": "gemini-3.1-flash-lite",
+  "waktu": "2026-10-04T12:17:56+00:00",
+  "jumlah_foto": 3,
+  "akurasi": 1.0,
+  "f1_per_kelas": {
+    "flood": 1.0,
+    "landslide": 1.0,
+    "fire": 1.0
+  },
+  "f1_makro": 1.0,
+  "hasil": [
+    {
+      "berkas": "test1.jpeg",
+      "jenis_sebenarnya": "flood",
+      "prediksi": "flood",
+      "keparahan": "tinggi",
+      "confidence": "tinggi",
+      "petunjuk_keaslian": [],
+      "cocok": true
+    },
+    {
+      "berkas": "test2.jpeg",
+      "jenis_sebenarnya": "fire",
+      "prediksi": "fire",
+      "keparahan": "tinggi",
+      "confidence": "tinggi",
+      "petunjuk_keaslian": [],
+      "cocok": true
+    },
+    {
+      "berkas": "test3.jpeg",
+      "jenis_sebenarnya": "landslide",
+      "prediksi": "landslide",
+      "keparahan": "tinggi",
+      "confidence": "tinggi",
+      "petunjuk_keaslian": [],
+      "cocok": true
+    }
+  ]
+}

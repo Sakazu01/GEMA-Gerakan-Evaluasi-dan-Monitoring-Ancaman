@@ -12,7 +12,8 @@ type ChatResponse = { answer: string; sources: Source[] };
 
 const suggestions = [
   "Berapa laporan hari ini?",
-  "Berapa laporan banjir?",
+  "Apa yang harus dilakukan saat banjir?",
+  "Bagaimana GEMA memeriksa laporan?",
   "Tampilkan laporan terbaru.",
 ];
 
@@ -20,7 +21,7 @@ export function GemaChatbot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([{
     role: "assistant",
-    content: "Halo! Saya GEMA AI. Tanyakan jumlah atau ringkasan laporan warga yang tercatat. Periksa status bukti pada setiap laporan; AI tidak memastikan kondisi lapangan.",
+    content: "Halo! Saya GEMA AI. Tanyakan jumlah atau ringkasan laporan warga, pengetahuan umum banjir, longsor, dan kebakaran, atau cara kerja GEMA. Saya tidak dapat memastikan kondisi di lapangan.",
   }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -65,27 +66,23 @@ export function GemaChatbot() {
     }
   }
 
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)}
-        aria-label="Buka GEMA AI" aria-haspopup="dialog"
-        className="fixed right-4 bottom-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full border border-[#0D5D3A]/20 bg-white shadow-lg hover:bg-slate-50">
-        <Image src="/G.svg" alt="" width={260} height={275} style={{width:28,height:"auto"}} />
-      </button>
-    );
-  }
-
   return (
-    <section role="dialog" aria-label="GEMA AI" aria-modal="false"
+    <>
+    <button type="button" onClick={() => setOpen(true)}
+      aria-label="Buka GEMA AI" aria-haspopup="dialog" inert={open} aria-hidden={open}
+      className={`fixed right-4 bottom-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full border border-[#0D5D3A]/20 bg-white shadow-lg transition duration-200 hover:bg-slate-50 ${open ? "pointer-events-none scale-50 opacity-0" : "scale-100 opacity-100"}`}>
+      <Image src="/G.svg" alt="" width={260} height={275} style={{width:28,height:"auto"}} />
+    </button>
+    <section role="dialog" aria-label="GEMA AI" aria-modal="false" inert={!open} aria-hidden={!open}
       onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}
-      className="fixed right-4 bottom-4 z-[60] flex h-[min(620px,calc(100dvh-48px))] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      className={`fixed right-4 bottom-4 z-[60] flex h-[min(620px,calc(100dvh-48px))] w-[calc(100vw-2rem)] max-w-sm origin-bottom-right flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl transition-[opacity,translate,scale,visibility] duration-300 ease-out ${open ? "visible translate-y-0 scale-100 opacity-100" : "pointer-events-none invisible translate-y-4 scale-90 opacity-0"}`}>
       <header className="flex items-center gap-3 bg-[#0D5D3A] px-4 py-3 text-white">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white">
           <Image src="/G.svg" alt="" width={260} height={275} style={{width:25,height:"auto"}} />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-bold">GEMA AI</h2>
-          <p className="text-xs text-white/85">Data laporan warga · periksa status bukti</p>
+          <p className="text-sm text-white">Data laporan warga · periksa status bukti</p>
         </div>
         <button type="button" onClick={() => setOpen(false)} aria-label="Tutup GEMA AI"
           className="flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-white/10">
@@ -96,7 +93,7 @@ export function GemaChatbot() {
       <div ref={logRef} role="log" aria-live="polite" aria-label="Percakapan GEMA AI"
         className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-[#F7F6E4]/35 px-4 py-5">
         {messages.map((item, index) => (
-          <div key={index} className={item.role === "user" ? "flex justify-end" : "flex items-start gap-2"}>
+          <div key={index} className={`gema-pop ${item.role === "user" ? "flex justify-end" : "flex items-start gap-2"}`}>
             {item.role === "assistant" && (
               <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0D5D3A]/20 bg-white">
                 <Image src="/G.svg" alt="" width={260} height={275} style={{width:18,height:"auto"}} />
@@ -130,7 +127,7 @@ export function GemaChatbot() {
             ))}
           </div>
         )}
-        {loading && <p role="status" className="pl-10 text-sm text-slate-600">GEMA AI sedang memeriksa laporan…</p>}
+        {loading && <p role="status" className="gema-pop animate-pulse pl-10 text-sm text-slate-600">GEMA AI sedang memeriksa laporan…</p>}
       </div>
 
       <form onSubmit={(event) => { event.preventDefault(); void send(input); }}
@@ -146,5 +143,6 @@ export function GemaChatbot() {
         </button>
       </form>
     </section>
+    </>
   );
 }
