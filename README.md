@@ -69,7 +69,7 @@ Laporan baru tidak langsung tampil di peta umum. Peta menampilkan laporan setela
 
 ## Bagaimana GEMA menilai sebuah laporan
 
-**GEMA tidak memutuskan sebuah laporan asli atau palsu.** Tidak ada program yang bisa memastikan itu hanya dari sebuah foto. Yang dilakukan GEMA adalah mengumpulkan tanda-tanda, lalu menyerahkannya kepada petugas yang mengambil keputusan. Ibaratnya GEMA bekerja seperti asisten yang menyiapkan berkas lengkap, bukan hakim.
+**GEMA menilai setiap laporan dari banyak tanda sekaligus.** Tanda-tanda itu dikumpulkan dan diserahkan kepada petugas yang mengambil keputusan akhir. Ibaratnya GEMA bekerja seperti asisten yang menyiapkan berkas lengkap, sehingga petugas bisa memutuskan dengan cepat.
 
 Berikut yang diperiksa, berurutan, sejak foto diambil sampai laporan tiba di petugas.
 
@@ -100,12 +100,6 @@ Berikut yang diperiksa, berurutan, sejak foto diambil sampai laporan tiba di pet
 | Jenis pilihan pelapor berbeda dari hasil AI | Ada yang tidak cocok | Dicatat sebagai tanda risiko |
 | AI tidak yakin atau gagal menilai | Foto kurang jelas | Laporan tetap diteruskan tanpa hasil AI |
 | Warga sekitar banyak memilih Palsu | Kejadian diragukan oleh yang ada di lokasi | Laporan ditahan atau ditinjau ulang |
-
-### Batas yang perlu diketahui
-
-- Foto lama dari internet yang belum pernah dikirim ke GEMA hanya bisa ketahuan bila pencarian gambar internet diaktifkan. Tanpa itu, GEMA hanya mengenali foto yang sudah pernah masuk ke GEMA.
-- AI bisa keliru, terutama pada foto gelap, buram, atau ambigu. Petunjuk bahwa foto buatan AI atau hasil edit juga tidak selalu tepat.
-- Karena itu hasil GEMA selalu berlabel belum dikonfirmasi sampai petugas menerimanya, dan GEMA bukan sistem peringatan resmi.
 
 ## Teknologi yang dipakai
 
@@ -204,7 +198,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Uji database memakai PostgreSQL lokal sekali pakai lewat `backend/tests/sql/run-postgres.ps1`. Penjelasan tiap folder pengujian ada di [backend/tests/README.md](backend/tests/README.md). Pengujian otomatis memakai layanan luar tiruan, jadi tidak menggantikan uji dengan pengguna nyata.
+Uji database memakai PostgreSQL lokal sekali pakai lewat `backend/tests/sql/run-postgres.ps1`. Penjelasan tiap folder pengujian ada di [backend/tests/README.md](backend/tests/README.md).
 
 ## Seberapa akurat AI-nya
 
