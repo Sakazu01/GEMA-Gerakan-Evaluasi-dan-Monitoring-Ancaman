@@ -55,7 +55,7 @@ export const disasterBadge: Record<DisasterType, { label: string; bg: string; ic
 
 // Satu sumber panduan keselamatan per jenis bencana -- dipakai di /evakuasi DAN di layar
 // "Hasil Identifikasi" (ReportForm) supaya isinya tidak pernah dobel-tulis/berbeda.
-export const disasterGuides: Record<DisasterType, { headline: string; do: string[]; dont: string[] }> = {
+export const disasterGuides: Record<DisasterType, { headline: string; do: string[]; dont: string[]; before: string[]; during: string[]; after: string[] }> = {
   flood: {
     headline: "Jauhi arus dan genangan dalam",
     do: [
@@ -67,6 +67,24 @@ export const disasterGuides: Record<DisasterType, { headline: string; do: string
       "Jangan menyeberangi arus banjir, walau terlihat dangkal.",
       "Jangan menyentuh peralatan listrik saat berada di air.",
       "Jangan kembali ke lokasi hanya untuk mengambil barang.",
+    ],
+    before: [
+      "Siapkan tas siaga berisi dokumen, obat, senter, dan air minum.",
+      "Kenali jalur evakuasi dan tempat yang lebih tinggi di sekitar rumah.",
+      "Simpan dokumen penting dalam wadah kedap air.",
+      "Pantau informasi cuaca dari BMKG dan BPBD.",
+    ],
+    during: [
+      "Matikan listrik dan gas jika masih aman dilakukan.",
+      "Segera pindah ke tempat yang lebih tinggi.",
+      "Hindari kabel listrik, tiang, dan air yang bergolak.",
+      "Hubungi 112 jika ada orang yang terjebak.",
+    ],
+    after: [
+      "Pulang hanya setelah petugas menyatakan aman.",
+      "Pakai sepatu dan sarung tangan saat membersihkan rumah.",
+      "Buang makanan dan air minum yang terendam banjir.",
+      "Cuci tangan dan waspadai penyakit seperti diare dan leptospirosis.",
     ],
   },
   landslide: {
@@ -80,6 +98,24 @@ export const disasterGuides: Record<DisasterType, { headline: string; do: string
       "Jangan berlindung di bawah tebing atau tanah yang retak.",
       "Jangan kembali ke area longsor sebelum dinyatakan aman petugas.",
     ],
+    before: [
+      "Kenali tandanya: retakan tanah, pohon atau tiang yang miring, dan air sungai yang tiba-tiba keruh.",
+      "Hindari tinggal atau membangun di dekat lereng curam.",
+      "Pastikan saluran air di sekitar rumah tidak tersumbat.",
+      "Tentukan jalur menjauh dari lereng bersama keluarga.",
+    ],
+    during: [
+      "Segera menjauh dari jalur longsoran, lari ke samping dan bukan searah aliran tanah.",
+      "Menuju tempat yang kokoh dan lapang.",
+      "Jika terjebak, lindungi kepala dan tubuh Anda.",
+      "Hubungi 112 atau 115 jika ada orang yang tertimbun.",
+    ],
+    after: [
+      "Jangan masuk ke area longsor sebelum dinyatakan aman.",
+      "Waspadai longsor susulan, terutama saat hujan.",
+      "Laporkan kerusakan jalan dan jembatan kepada petugas.",
+      "Periksa keluarga dan tetangga, beri pertolongan pertama bila perlu.",
+    ],
   },
   fire: {
     headline: "Jauhi api dan asap",
@@ -91,6 +127,25 @@ export const disasterGuides: Record<DisasterType, { headline: string; do: string
     dont: [
       "Jangan kembali untuk mengambil barang.",
       "Jangan gunakan lift saat evakuasi dari bangunan.",
+    ],
+    before: [
+      "Periksa instalasi listrik dan selang gas secara berkala.",
+      "Ketahui lokasi alat pemadam api ringan dan jalur keluar.",
+      "Jangan menumpuk barang di dekat pintu dan jalur keluar.",
+      "Simpan nomor pemadam kebakaran 113.",
+    ],
+    during: [
+      "Berteriak dan ajak semua orang segera keluar.",
+      "Merunduk di bawah asap dan tutup hidung dengan kain basah.",
+      "Tutup pintu di belakang Anda untuk memperlambat api.",
+      "Hubungi 113 setelah berada di tempat aman.",
+      "Jika pakaian terbakar: berhenti, rebahkan diri, lalu berguling.",
+    ],
+    after: [
+      "Jangan masuk kembali sebelum petugas menyatakan aman.",
+      "Periksa kesehatan, terutama akibat asap, dan cari bantuan medis bila sesak.",
+      "Jangan menyalakan listrik atau gas sebelum diperiksa.",
+      "Laporkan kerusakan kepada petugas setempat.",
     ],
   },
 };
@@ -122,6 +177,29 @@ export type MapLocation = { lat: number; lng: number; label: string; source?: Lo
 // kosong. Satu titik per klaster kota yang dipakai seed_demo.py agar selalu ada yang dekat.
 export const titikKumpul: { name: string; city: string; lat: number; lng: number }[] = [
   { name: "Lapangan Gasibu", city: "Bandung", lat: -6.9018, lng: 107.6182 },
+  { name: "Alun-alun Kota Bandung", city: "Bandung", lat: -6.9218, lng: 107.6071 },
+  { name: "Lapangan Tegallega", city: "Bandung", lat: -6.9364, lng: 107.6013 },
+  { name: "Lapangan Saparua", city: "Bandung", lat: -6.9112, lng: 107.6222 },
+  { name: "Alun-alun Ujungberung", city: "Bandung", lat: -6.9100, lng: 107.7040 },
+  { name: "Alun-alun Cimahi", city: "Cimahi", lat: -6.8721, lng: 107.5423 },
+  { name: "Stadion Si Jalak Harupat", city: "Kabupaten Bandung", lat: -7.0281, lng: 107.5373 },
+  { name: "Monumen Nasional (Monas)", city: "Jakarta Pusat", lat: -6.1754, lng: 106.8272 },
+  { name: "Lapangan Banteng", city: "Jakarta Pusat", lat: -6.1699, lng: 106.8350 },
+  { name: "Stadion Gelora Bung Karno", city: "Jakarta Pusat", lat: -6.2183, lng: 106.8018 },
+  { name: "Stadion Patriot Candrabhaga", city: "Bekasi", lat: -6.2262, lng: 106.9954 },
+  { name: "Lapangan Sempur", city: "Bogor", lat: -6.5895, lng: 106.7898 },
+  { name: "Lapangan Simpang Lima", city: "Semarang", lat: -6.9903, lng: 110.4228 },
+  { name: "Alun-alun Utara", city: "Yogyakarta", lat: -7.8030, lng: 110.3645 },
+  { name: "Alun-alun Banjarnegara", city: "Banjarnegara", lat: -7.3970, lng: 109.6890 },
+  { name: "Tugu Pahlawan", city: "Surabaya", lat: -7.2457, lng: 112.7378 },
+  { name: "Taman Bungkul", city: "Surabaya", lat: -7.2915, lng: 112.7398 },
+  { name: "Alun-alun Kota Malang", city: "Malang", lat: -7.9823, lng: 112.6308 },
+  { name: "Lapangan Merdeka", city: "Medan", lat: 3.5897, lng: 98.6741 },
+  { name: "Lapangan Imam Bonjol", city: "Padang", lat: -0.9486, lng: 100.3567 },
+  { name: "Benteng Kuto Besak", city: "Palembang", lat: -2.9917, lng: 104.7664 },
+  { name: "Lapangan Saburai", city: "Bandar Lampung", lat: -5.4300, lng: 105.2620 },
+  { name: "Lapangan Puputan Badung", city: "Denpasar", lat: -8.6558, lng: 115.2166 },
+  { name: "Lapangan Merdeka", city: "Ambon", lat: -3.6955, lng: 128.1830 },
   { name: "GOR Hasanuddin", city: "Banjarmasin", lat: -3.3200, lng: 114.5900 },
   { name: "Lapangan Sanaman Mantikei", city: "Palangka Raya", lat: -2.2100, lng: 113.9200 },
   { name: "Alun-alun Kota Sampit", city: "Sampit", lat: -2.5350, lng: 112.9450 },

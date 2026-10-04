@@ -1,6 +1,6 @@
 # GEMA (Gerakan Evaluasi dan Monitoring Ancaman)
 
-GEMA adalah aplikasi web untuk melaporkan dan memantau kejadian bencana langsung dari warga: banjir, tanah longsor, dan kebakaran. Warga memotret kejadian, model AI menilai isi foto, sistem memeriksa apakah foto itu pernah dipakai pada laporan lain, lalu paket bukti diteruskan ke petugas. Warga di sekitar lokasi membantu dengan memilih Konfirmasi atau Palsu.
+GEMA adalah aplikasi web agar warga bisa melaporkan banjir, tanah longsor, dan kebakaran dengan cepat, dan agar petugas menerima laporan yang sudah disertai bukti. Warga cukup memotret kejadian. Sistem lalu membantu memeriksa foto itu, dan petugas yang memutuskan langkah berikutnya.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -22,108 +22,122 @@ GEMA adalah aplikasi web untuk melaporkan dan memantau kejadian bencana langsung
 
 ## Daftar isi
 
-- [Fitur utama](#fitur-utama)
+- [Masalah yang ingin dijawab](#masalah-yang-ingin-dijawab)
+- [Yang bisa dilakukan GEMA](#yang-bisa-dilakukan-gema)
 - [Alur pengguna](#alur-pengguna)
-- [Tech stack](#tech-stack)
-- [Arsitektur](#arsitektur)
-- [Struktur repository](#struktur-repository)
+- [Bagaimana GEMA menilai sebuah laporan](#bagaimana-gema-menilai-sebuah-laporan)
+- [Teknologi yang dipakai](#teknologi-yang-dipakai)
+- [Struktur folder](#struktur-folder)
 - [Cara menjalankan](#cara-menjalankan)
 - [Pengujian](#pengujian)
-- [Evaluasi model AI](#evaluasi-model-ai)
+- [Seberapa akurat AI-nya](#seberapa-akurat-ai-nya)
 - [Deploy](#deploy)
 - [Dokumentasi lanjutan](#dokumentasi-lanjutan)
 
-## Fitur utama
+## Masalah yang ingin dijawab
 
-- Laporan tanpa login. Sesi anonim dibuat di belakang layar, dan foto hanya dapat diambil langsung dari kamera.
-- Peta penuh dengan pencarian kota atau jenis bencana, mode status laporan, dan mode kepadatan pelapor.
-- Penilaian foto oleh model AI: jenis bencana, tingkat keparahan visual, tingkat keyakinan, serta petunjuk bila foto tampak seperti tangkapan layar, gambar buatan, atau hasil edit.
-- Pemeriksaan kemiripan foto dengan laporan lain di GEMA, dan pencarian gambar di web bila penyedianya diaktifkan.
-- Laporan yang mirip di lokasi dan waktu yang berdekatan dikelompokkan menjadi satu insiden.
-- Petugas menerima paket bukti lewat Telegram dan menekan tombol terima. Laporan baru tampil di peta publik setelah diterima.
-- Warga dalam radius 500 meter dapat memilih Konfirmasi atau Palsu sebagai bukti tambahan. Enam suara Palsu yang lebih banyak daripada Konfirmasi menahan laporan yang belum diterima petugas.
-- Draft laporan tersimpan di perangkat selama tujuh hari dan terkirim saat aplikasi dibuka kembali.
-- Chatbot GEMA AI menjawab jumlah dan ringkasan laporan, pengetahuan umum bencana, dan cara kerja GEMA.
-- Pembatasan penyalahgunaan: satu laporan setiap 3 menit per akun anonim, dengan batas tambahan per jaringan.
+Saat bencana terjadi, kabar tersebar cepat lewat foto. Masalahnya, foto lama sering dipakai ulang, foto bisa diedit, dan sulit memastikan lokasi serta waktu aslinya. Akibatnya petugas harus memeriksa banyak laporan satu per satu, dan warga bisa panik karena kabar yang keliru.
+
+GEMA membantu di dua sisi. Warga mendapat jalur lapor yang singkat. Petugas menerima laporan yang sudah dilengkapi hasil pemeriksaan foto, waktu, lokasi, dan tanggapan warga sekitar.
+
+## Yang bisa dilakukan GEMA
+
+- Melapor tanpa daftar akun. Foto harus diambil langsung dengan kamera, tidak bisa dari galeri.
+- Melihat laporan di peta, mencari berdasarkan nama kota atau jenis bencana, dan melihat di mana laporan paling banyak.
+- Mendapat bantuan AI untuk membaca isi foto: ini banjir, longsor, atau kebakaran, dan seberapa parah kelihatannya.
+- Mengetahui apakah sebuah foto pernah dipakai pada laporan lain.
+- Membantu memeriksa laporan di sekitar Anda dengan memilih Konfirmasi atau Palsu.
+- Bertanya ke chatbot GEMA AI tentang jumlah laporan, langkah aman saat bencana, atau cara kerja GEMA.
+- Menyimpan laporan sementara di perangkat bila sinyal hilang, lalu mengirimnya saat aplikasi dibuka lagi.
 
 ## Alur pengguna
 
 ```mermaid
 flowchart LR
-  A["Warga melihat kejadian"] --> B["Ambil foto dengan kamera"]
-  B --> C["Periksa lokasi dan jenis kejadian"]
-  C --> D["Kirim laporan"]
-  D --> E["Model AI menilai foto"]
-  E --> F["Sistem memeriksa kemiripan foto"]
-  F --> G["Petugas menerima paket bukti di Telegram"]
-  G --> H["Petugas menekan Terima laporan"]
-  H --> I["Laporan tampil di peta publik"]
-  F --> J["Warga sekitar 500 m memilih Konfirmasi atau Palsu"]
-  J -.-> G
+  A["Warga melihat kejadian"] --> B["Memotret dengan kamera"]
+  B --> C["Memeriksa lokasi dan jenis kejadian"]
+  C --> D["Mengirim laporan"]
+  D --> E["GEMA menilai dan memeriksa foto"]
+  E --> F["Petugas menerima laporan di Telegram"]
+  F --> G["Petugas menekan Terima laporan"]
+  G --> H["Laporan tampil di peta untuk semua orang"]
+  E --> I["Warga sekitar memilih Konfirmasi atau Palsu"]
+  I -.-> F
 ```
 
-Singkatnya, warga melapor dalam beberapa langkah, sistem menyiapkan bukti, dan petugas yang memutuskan. Hasil AI membantu menilai isi foto, bukan membuktikan kebenaran kejadian, dan GEMA bukan sistem peringatan resmi.
+Laporan baru tidak langsung tampil di peta umum. Peta menampilkan laporan setelah petugas menerimanya. Sebelum itu, hanya warga di sekitar lokasi (radius 500 meter) yang diajak membantu memeriksa.
 
-## Tech stack
+## Bagaimana GEMA menilai sebuah laporan
 
-| Lapisan | Teknologi | Fungsi |
+**GEMA tidak memutuskan sebuah laporan asli atau palsu.** Tidak ada program yang bisa memastikan itu hanya dari sebuah foto. Yang dilakukan GEMA adalah mengumpulkan tanda-tanda, lalu menyerahkannya kepada petugas yang mengambil keputusan. Ibaratnya GEMA bekerja seperti asisten yang menyiapkan berkas lengkap, bukan hakim.
+
+Berikut yang diperiksa, berurutan, sejak foto diambil sampai laporan tiba di petugas.
+
+**1. Foto harus langsung dari kamera.** Galeri tidak tersedia. Ini mencegah orang mengirim foto lama yang tersimpan di ponsel.
+
+**2. Foto dirapikan dan diberi sidik jari.** Foto dikecilkan dan data tersembunyinya (seperti lokasi bawaan kamera) dibuang demi privasi. Lalu GEMA membuat dua sidik jari dari foto itu. Sidik jari pertama mengenali foto yang persis sama. Sidik jari kedua mengenali foto yang mirip, misalnya yang diperkecil atau disimpan ulang.
+
+**3. Model AI melihat isi foto.** Model AI menjawab beberapa hal: apakah foto ini benar menunjukkan banjir, longsor, atau kebakaran; seberapa parah kelihatannya; seberapa yakin ia; dan apa yang membatasi penilaiannya (misalnya foto gelap atau sudutnya sempit). Model juga diminta memberi tanda bila foto tampak seperti tangkapan layar, gambar buatan AI, hasil edit atau gabungan beberapa foto, atau berisi watermark media. Model dilarang menebak kapan dan di mana foto diambil, dan dilarang menyimpulkan foto itu palsu atau asli. Ia hanya menyebut apa yang terlihat.
+
+**4. GEMA mencocokkan dengan laporan lain.** Sidik jari foto dibandingkan dengan semua laporan sebelumnya. Bila ada yang sama atau mirip, itu dicatat sebagai bukti. Bila fitur pencarian gambar internet diaktifkan, foto juga dicari di web untuk melihat apakah sudah beredar di tempat lain.
+
+**5. GEMA memeriksa waktu dan kecocokan.** Laporan berlaku 12 jam sejak waktu kejadian. Waktu yang tidak jelas atau sudah lewat dicatat sebagai tanda risiko. Jenis bencana yang dipilih pelapor juga dibandingkan dengan hasil AI. Bila berbeda, itu dicatat.
+
+**6. Laporan yang mirip digabung.** Beberapa laporan dengan jenis yang sama, jarak dekat (500 meter), dan waktu berdekatan (2 jam) dikelompokkan menjadi satu kejadian, supaya petugas melihat gambaran utuh.
+
+**7. Warga sekitar ikut menilai.** Warga yang berada dalam radius 500 meter dapat memilih Konfirmasi atau Palsu. Suara ini hanya bukti tambahan. Bila Palsu jauh lebih banyak (minimal enam suara dan lebih banyak dari Konfirmasi), laporan yang belum diterima petugas ditahan, dan laporan yang sudah diterima ditandai untuk ditinjau ulang.
+
+**8. Petugas memutuskan.** Petugas menerima ringkasan lewat Telegram: isi foto menurut AI, hasil pemeriksaan kemiripan foto, dan suara warga. Tanda risiko lengkap bisa dibuka lewat tombol Lihat bukti. Petugas menekan tombol Terima bila yakin, dan baru setelah itu laporan tampil di peta umum.
+
+### Tanda yang dicari dan artinya
+
+| Tanda | Artinya | Yang terjadi |
 | --- | --- | --- |
-| Antarmuka | Next.js 16, React 19, TypeScript, Tailwind CSS 4 | Halaman warga, form laporan, chatbot |
-| Peta | Leaflet dan OpenStreetMap | Marker laporan, kepadatan pelapor, pilih lokasi |
-| Backend | FastAPI (Python 3.11 ke atas) | API laporan, aturan bisnis, kuota, worker pengiriman |
-| Database dan penyimpanan | Supabase (PostgreSQL, Auth, Storage) | Data laporan, sesi anonim, foto privat |
-| Model AI | Model visi-bahasa (saat ini Gemini 3.1 Flash-Lite lewat Google AI API) | Menilai foto dan menjawab chatbot. Penyedia dapat diganti di satu fungsi |
-| Pencarian gambar web | Google Cloud Vision Web Detection (opsional) | Mencari foto yang sama di internet |
-| Notifikasi | Telegram Bot API, Web Push (VAPID) | Paket bukti ke petugas, pemberitahuan ke warga |
-| Pengujian | unittest, node:test, Playwright, PostgreSQL lokal | Test unit, peramban, dan database |
-| Deploy | Railway | Dua layanan: frontend dan backend |
+| Foto sama atau mirip dengan laporan lain | Foto mungkin dipakai ulang | Dicatat sebagai bukti untuk petugas |
+| Foto ditemukan di internet | Foto mungkin sudah beredar sebelumnya | Dicatat sebagai bukti untuk petugas |
+| Tampak tangkapan layar, gambar buatan, atau hasil edit | Foto mungkin bukan hasil jepretan langsung | Dicatat sebagai petunjuk untuk petugas |
+| Waktu kejadian tidak jelas atau sudah lewat 12 jam | Laporan belum bisa dianggap terbaru | Laporan ditahan sampai ditinjau |
+| Jenis pilihan pelapor berbeda dari hasil AI | Ada yang tidak cocok | Dicatat sebagai tanda risiko |
+| AI tidak yakin atau gagal menilai | Foto kurang jelas | Laporan tetap diteruskan tanpa hasil AI |
+| Warga sekitar banyak memilih Palsu | Kejadian diragukan oleh yang ada di lokasi | Laporan ditahan atau ditinjau ulang |
 
-## Arsitektur
+### Batas yang perlu diketahui
 
-```mermaid
-flowchart TB
-  IN(["Laporan warga"]) --> GATE["Gerbang masuk: sesi anonim dan kuota"]
-  subgraph ENGINE["Mesin analisis"]
-    direction TB
-    L1["Olah foto: cek format, hapus EXIF, buat sidik jari"]
-    L2["Penilaian AI: jenis, keparahan, petunjuk keaslian"]
-    L3["Bandingkan bukti: foto sama, foto mirip, web"]
-    L4["Tanda risiko dan status laporan"]
-    L5["Kelompokkan insiden"]
-    L1 --> L2 --> L3 --> L4 --> L5
-  end
-  GATE --> L1
-  L5 --> OB["Antrean kirim"]
-  OB --> TG["Telegram petugas"]
-  OB --> PUSH["Notifikasi warga sekitar"]
-  TG --> MAP["Peta publik"]
-  DB[("Supabase")] <--> ENGINE
-```
+- Foto lama dari internet yang belum pernah dikirim ke GEMA hanya bisa ketahuan bila pencarian gambar internet diaktifkan. Tanpa itu, GEMA hanya mengenali foto yang sudah pernah masuk ke GEMA.
+- Foto yang diedit cukup banyak, misalnya dipotong jauh atau diputar, bisa lolos dari pemeriksaan kemiripan.
+- AI bisa keliru, terutama pada foto gelap, buram, atau ambigu. Petunjuk bahwa foto buatan AI atau hasil edit juga tidak selalu tepat.
+- Karena itu hasil GEMA selalu berlabel belum dikonfirmasi sampai petugas menerimanya, dan GEMA bukan sistem peringatan resmi.
 
-## Struktur repository
+## Teknologi yang dipakai
+
+| Bagian | Teknologi | Untuk apa |
+| --- | --- | --- |
+| Tampilan aplikasi | Next.js, React, TypeScript, Tailwind CSS | Halaman yang dilihat warga: peta, form laporan, chatbot |
+| Peta | Leaflet dan OpenStreetMap | Menampilkan laporan dan memilih lokasi |
+| Server | FastAPI (Python) | Menerima laporan, menjalankan pemeriksaan, mengirim notifikasi |
+| Database dan foto | Supabase | Menyimpan laporan, sesi pengguna, dan foto secara privat |
+| Model AI | Model visi-bahasa (saat ini Gemini 3.1 Flash-Lite) | Membaca isi foto dan menjawab chatbot. Bisa diganti ke penyedia lain |
+| Pencarian gambar internet | Google Cloud Vision (opsional) | Mencari foto yang sama di web |
+| Notifikasi | Telegram Bot dan Web Push | Mengirim laporan ke petugas dan kabar ke warga |
+| Hosting | Railway | Menjalankan aplikasi di internet |
+
+## Struktur folder
 
 ```text
 .
-├── frontend/                  Aplikasi web (Next.js)
+├── frontend/                  Aplikasi web (yang dilihat pengguna)
 │   ├── src/app/               Halaman: peta, ringkasan, form laporan, panduan, hotline, tentang
-│   ├── src/components/        Komponen antarmuka, peta, chatbot
-│   ├── src/lib/               Klien API, sesi, lokasi, aturan tampilan
-│   ├── public/                Logo, ikon, service worker
-│   └── tests/
-│       ├── unit/              Test unit (node:test)
-│       └── e2e/               Test peramban (Playwright)
-├── backend/                   API (FastAPI)
-│   ├── app/                   Kode aplikasi: api, services, schemas, deps, core
-│   ├── migrations/            Migrasi database 001 sampai 011
-│   ├── scripts/               Skrip operasional: data demo, cek kesiapan, webhook, evaluasi AI
-│   └── tests/
-│       ├── unit/              Test Python dengan layanan luar yang ditiru
-│       ├── sql/               Uji migrasi, transaksi, dan konkurensi PostgreSQL
-│       ├── fixtures/          Foto uji (tidak ikut repository) dan kunci jawaban
-│       └── output/            Hasil evaluasi AI
+│   ├── src/components/        Potongan tampilan: peta, kartu laporan, chatbot
+│   ├── src/lib/               Pembantu: komunikasi ke server, lokasi, aturan tampilan
+│   └── tests/                 Pengujian: unit/ (fungsi kecil) dan e2e/ (simulasi di peramban)
+├── backend/                   Server
+│   ├── app/                   Kode utama: pemeriksaan laporan, AI, notifikasi, chatbot
+│   ├── migrations/            Langkah pembuatan tabel database (001 sampai 011)
+│   ├── scripts/               Skrip bantu: data demo, cek kesiapan, webhook Telegram, evaluasi AI
+│   └── tests/                 Pengujian: unit/, sql/, fixtures/ (foto uji), output/ (hasil evaluasi)
 ├── docs/
-│   ├── fik-fair/              Spesifikasi, hasil pengujian, operasional, submission
-│   ├── perencanaan/           Rencana implementasi, revisi, notulen, perubahan dari proposal
+│   ├── fik-fair/              Spesifikasi, hasil pengujian, panduan operasional
+│   ├── perencanaan/           Rencana, revisi, notulen, perubahan dari proposal
 │   └── pitch/                 Naskah pitching dan panduan bisnis
 ├── LICENSE
 └── README.md
@@ -131,13 +145,13 @@ flowchart TB
 
 ## Cara menjalankan
 
-Prasyarat: Node.js 24, Python 3.11 ke atas, dan sebuah project Supabase.
+Kebutuhan: Node.js 24, Python 3.11 ke atas, dan sebuah project Supabase.
 
-**1. Siapkan Supabase.** Jalankan berkas di `backend/migrations/` secara berurutan dari 001 sampai 011 lewat SQL Editor. Aktifkan Anonymous sign-ins di menu Authentication. Detail ada di [panduan operasional](docs/fik-fair/operasional.md).
+**1. Siapkan database.** Di Supabase, buka SQL Editor lalu jalankan berkas di `backend/migrations/` berurutan dari 001 sampai 011. Aktifkan Anonymous sign-ins di menu Authentication. Detail ada di [panduan operasional](docs/fik-fair/operasional.md).
 
-**2. Isi variabel lingkungan.** Salin `backend/.env.example` menjadi `backend/.env` dan `frontend/.env.example` menjadi `frontend/.env.local`. Isi alamat dan kunci Supabase, `MODEL_API_KEY`, serta `RATE_LIMIT_SALT` (teks acak). Kunci rahasia hanya untuk backend. Kunci publishable boleh di frontend.
+**2. Isi pengaturan.** Salin `backend/.env.example` menjadi `backend/.env`, dan `frontend/.env.example` menjadi `frontend/.env.local`. Isi alamat dan kunci Supabase, kunci model AI (`MODEL_API_KEY`), dan `RATE_LIMIT_SALT` (teks acak apa saja). Kunci rahasia hanya untuk server, jangan dimasukkan ke frontend.
 
-**3. Jalankan backend** dari folder `backend`:
+**3. Jalankan server** dari folder `backend`:
 
 ```bash
 python -m venv .venv
@@ -146,29 +160,29 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000 --no-access-log
 ```
 
-**4. Jalankan frontend** dari folder `frontend`:
+**4. Jalankan aplikasi web** dari folder `frontend`:
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Buka http://localhost:3000. Pemeriksaan backend ada di http://localhost:8000/health.
+Buka http://localhost:3000. Untuk memastikan server hidup, buka http://localhost:8000/health.
 
-**5. Data demo (opsional).** Untuk mengisi peta dengan titik simulasi, jalankan dari folder `backend`, lalu set `DEMO_SHOWCASE=true` di `backend/.env` dan jalankan ulang backend:
+**5. Isi peta dengan data contoh (opsional).** Dari folder `backend`, jalankan perintah berikut, lalu tambahkan `DEMO_SHOWCASE=true` di `backend/.env` dan jalankan ulang server:
 
 ```bash
 DEMO_MODE=true python -m scripts.seed_demo --showcase
 ```
 
-Titik simulasi kedaluwarsa dalam 12 jam, jadi jalankan ulang perintah itu sebelum demo. Jangan nyalakan `DEMO_SHOWCASE` pada layanan yang dipakai publik.
+Data contoh kedaluwarsa dalam 12 jam, jadi jalankan ulang sebelum demo. Jangan nyalakan `DEMO_SHOWCASE` pada layanan yang dipakai publik.
 
-Skrip bantu lain, semuanya dari folder `backend`:
+Skrip bantu lain, dari folder `backend`:
 
 ```bash
-python -m scripts.check_readiness --live          # cek konfigurasi dan skema database
-python -m scripts.set_telegram_webhook https://HOST-BACKEND
-python -m scripts.evaluasi_ai                     # evaluasi model pada foto uji
+python -m scripts.check_readiness --live          # cek pengaturan dan tabel database
+python -m scripts.set_telegram_webhook https://ALAMAT-SERVER
+python -m scripts.evaluasi_ai                     # uji AI pada foto contoh
 ```
 
 ## Pengujian
@@ -191,17 +205,17 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Uji database memakai PostgreSQL lokal sekali pakai: `backend/tests/sql/run-postgres.ps1`. Penjelasan tiap folder ada di [backend/tests/README.md](backend/tests/README.md). Test otomatis memakai layanan luar yang ditiru, jadi tidak menggantikan uji pengguna atau uji layanan nyata.
+Uji database memakai PostgreSQL lokal sekali pakai lewat `backend/tests/sql/run-postgres.ps1`. Penjelasan tiap folder pengujian ada di [backend/tests/README.md](backend/tests/README.md). Pengujian otomatis memakai layanan luar tiruan, jadi tidak menggantikan uji dengan pengguna nyata.
 
-## Evaluasi model AI
+## Seberapa akurat AI-nya
 
-Model yang dipakai hanya diberi prompt dan skema keluaran terstruktur. Model ini tidak di-fine-tune. Jawaban chatbot dan angka laporan selalu diambil dari data nyata, bukan dikarang model.
+Model AI hanya diberi petunjuk (prompt), tidak dilatih ulang. Angka laporan dan jawaban chatbot selalu diambil dari data nyata, bukan dikarang model.
 
-Evaluasi awal memakai 3 foto (satu banjir, satu kebakaran, satu longsor) dengan kunci jawaban yang ditentukan lewat tinjauan manual sebelum foto dikirim ke model. Hasilnya: akurasi jenis bencana 3 dari 3 dan F1 makro 1,0. Karena jumlah foto sangat kecil, angka ini hanya menunjukkan bahwa alurnya bekerja pada kasus yang jelas dan bukan tolok ukur statistik. Rincian dan cara mengulangnya ada di [backend/tests/output/hasil_evaluasi.md](backend/tests/output/hasil_evaluasi.md).
+Kami baru menguji dengan 3 foto: satu banjir, satu kebakaran, satu longsor. Jawaban yang benar ditentukan lebih dulu oleh manusia sebelum foto dikirim ke model. Hasilnya, ketiganya ditebak benar (akurasi 3 dari 3, F1 makro 1,0). Jumlah foto ini sangat sedikit, jadi angkanya hanya menunjukkan bahwa alurnya berjalan pada kasus yang jelas, bukan bukti akurasi yang kuat. Laporan lengkap dan cara mengulangnya ada di [backend/tests/output/hasil_evaluasi.md](backend/tests/output/hasil_evaluasi.md).
 
 ## Deploy
 
-Aplikasi dipasang sebagai dua layanan Railway: akar `frontend/` dan akar `backend/`. Variabel `NEXT_PUBLIC_*` dibaca saat build, jadi bangun ulang frontend setelah menggantinya. Pada produksi, isi `CORS_ORIGINS`, `RATE_LIMIT_SALT`, dan kunci layanan di backend, gunakan `DEMO_MODE=false` dan `NEXT_PUBLIC_DEMO_MODE=false`, serta jalankan semua migrasi lebih dulu. Alamat demo sebelumnya adalah https://amusing-communication-production-abe3.up.railway.app/ dan masih memakai versi lama sampai cabang terbaru dipasang. Langkah pemeriksaan sebelum rilis ada di [panduan operasional](docs/fik-fair/operasional.md).
+Aplikasi dipasang di Railway sebagai dua layanan: satu untuk folder `frontend/` dan satu untuk `backend/`. Pengaturan yang diawali `NEXT_PUBLIC_` dibaca saat pembuatan aplikasi, jadi frontend perlu dibangun ulang setelah pengaturan itu diganti. Di layanan nyata, isi `CORS_ORIGINS`, `PUBLIC_APP_URL`, `RATE_LIMIT_SALT`, dan kunci layanan di server, atur `DEMO_MODE=false`, dan pastikan semua migrasi database sudah dijalankan. Alamat demo: https://amusing-communication-production-abe3.up.railway.app/. Langkah pemeriksaan sebelum rilis ada di [panduan operasional](docs/fik-fair/operasional.md).
 
 ## Dokumentasi lanjutan
 
