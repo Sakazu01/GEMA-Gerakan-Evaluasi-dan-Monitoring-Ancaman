@@ -77,7 +77,7 @@ Berikut yang diperiksa, berurutan, sejak foto diambil sampai laporan tiba di pet
 
 **2. Foto dirapikan dan diberi sidik jari.** Foto dikecilkan dan data tersembunyinya (seperti lokasi bawaan kamera) dibuang demi privasi. Lalu GEMA membuat dua sidik jari dari foto itu. Sidik jari pertama mengenali foto yang persis sama. Sidik jari kedua mengenali foto yang mirip, misalnya yang diperkecil atau disimpan ulang.
 
-**3. Model AI melihat isi foto.** Model AI menjawab beberapa hal: apakah foto ini benar menunjukkan banjir, longsor, atau kebakaran; seberapa parah kelihatannya; seberapa yakin ia; dan apa yang membatasi penilaiannya (misalnya foto gelap atau sudutnya sempit). Model juga diminta memberi tanda bila foto tampak seperti tangkapan layar, gambar buatan AI, hasil edit atau gabungan beberapa foto, atau berisi watermark media. Model dilarang menebak kapan dan di mana foto diambil, dan dilarang menyimpulkan foto itu palsu atau asli. Ia hanya menyebut apa yang terlihat.
+**3. Model AI melihat isi foto.** Model AI menjawab beberapa hal: apakah foto ini benar menunjukkan banjir, longsor, atau kebakaran; seberapa parah kelihatannya; dan seberapa yakin ia. Model juga diminta memberi tanda bila foto tampak seperti tangkapan layar, gambar buatan AI, hasil edit atau gabungan beberapa foto, atau berisi watermark media. Model hanya menyebut apa yang terlihat di foto, sementara waktu dan lokasi dicatat dari data pelapor.
 
 **4. GEMA mencocokkan dengan laporan lain.** Sidik jari foto dibandingkan dengan semua laporan sebelumnya. Bila ada yang sama atau mirip, itu dicatat sebagai bukti. Bila fitur pencarian gambar internet diaktifkan, foto juga dicari di web untuk melihat apakah sudah beredar di tempat lain.
 
@@ -98,7 +98,7 @@ Berikut yang diperiksa, berurutan, sejak foto diambil sampai laporan tiba di pet
 | Tampak tangkapan layar, gambar buatan, atau hasil edit | Foto mungkin bukan hasil jepretan langsung | Dicatat sebagai petunjuk untuk petugas |
 | Waktu kejadian tidak jelas atau sudah lewat 12 jam | Laporan belum bisa dianggap terbaru | Laporan ditahan sampai ditinjau |
 | Jenis pilihan pelapor berbeda dari hasil AI | Ada yang tidak cocok | Dicatat sebagai tanda risiko |
-| AI tidak yakin atau gagal menilai | Foto kurang jelas | Laporan tetap diteruskan tanpa hasil AI |
+| AI belum bisa menilai | Foto perlu dilihat langsung oleh petugas | Laporan tetap diteruskan agar cepat ditangani |
 | Warga sekitar banyak memilih Palsu | Kejadian diragukan oleh yang ada di lokasi | Laporan ditahan atau ditinjau ulang |
 
 ## Teknologi yang dipakai
